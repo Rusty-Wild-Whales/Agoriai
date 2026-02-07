@@ -8,6 +8,7 @@ import type {
   Message,
   PlatformStats,
   Post,
+  SearchResults,
   User,
 } from "../types";
 
@@ -46,24 +47,44 @@ export const agoraApi = {
 
   getCurrentUser: () => api.get<User>("/users/me"),
 
+  updateMySettings: (payload: { visibilityLevel: "anonymous" | "role" | "school" | "realName" }) =>
+    api.patch<User>("/users/me/settings", payload),
+
   getPlatformStats: () => api.get<PlatformStats>("/stats/platform"),
 
   getUser: (id: string) => api.get<User>(`/users/${id}`),
 
   searchUsers: (q?: string, limit = 20) => api.get<User[]>(`/users${toQuery({ q, limit })}`),
 
+  searchEverything: (q: string, limit = 6) =>
+    api.get<SearchResults>(`/search${toQuery({ q, limit })}`),
+
   getUserPosts: (id: string) => api.get<Post[]>(`/users/${id}/posts`),
 
   connectUser: (id: string) =>
     api.post<{ connected: boolean; alreadyConnected: boolean }>(`/users/${id}/connect`, {}),
 
-  getPosts: (filter?: string) => api.get<Post[]>(`/posts${toQuery({ filter })}`),
+  getPosts: (filter?: string, sort?: string) => api.get<Post[]>(`/posts${toQuery({ filter, sort })}`),
 
   getRecentPosts: (limit = 5) => api.get<Post[]>(`/posts/recent${toQuery({ limit })}`),
 
   getTrendingPosts: (limit = 5) => api.get<Post[]>(`/posts/trending${toQuery({ limit })}`),
 
   createPost: (post: Partial<Post>) => api.post<Post>("/posts", post),
+
+  updatePost: (
+    postId: string,
+    payload: {
+      title?: string;
+      content?: string;
+      category?: Post["category"];
+      tags?: string[];
+      companyId?: string | null;
+      companyName?: string;
+    }
+  ) => api.patch<Post>(`/posts/${postId}`, payload),
+
+  deletePost: (postId: string) => api.delete<{ ok: boolean }>(`/posts/${postId}`),
 
   upvotePost: (postId: string) => api.post<{ id: string; upvotes: number }>(`/posts/${postId}/upvote`, {}),
 
@@ -76,6 +97,12 @@ export const agoraApi = {
     postId: string,
     payload: { content: string; parentCommentId?: string }
   ) => api.post<Comment>(`/posts/${postId}/comments`, payload),
+
+  updateComment: (commentId: string, payload: { content: string }) =>
+    api.patch<Comment>(`/comments/${commentId}`, payload),
+
+  deleteComment: (commentId: string) =>
+    api.delete<{ ok: boolean; removedCount: number }>(`/comments/${commentId}`),
 
   voteComment: (commentId: string, value: -1 | 0 | 1) =>
     api.post<{ id: string; upvotes: number; userVote: -1 | 0 | 1 }>(`/comments/${commentId}/vote`, { value }),
@@ -99,4 +126,16 @@ export const agoraApi = {
 
   sendMessage: (conversationId: string, payload: { content: string }) =>
     api.post<Message>(`/conversations/${conversationId}/messages`, payload),
+
+  requestIdentityReveal: (conversationId: string) =>
+    api.post<{ ok: boolean; identity: Conversation["identity"] }>(
+      `/conversations/${conversationId}/identity/request`,
+      {}
+    ),
+
+  respondIdentityReveal: (conversationId: string, accept: boolean) =>
+    api.post<{ ok: boolean; identity: Conversation["identity"] }>(
+      `/conversations/${conversationId}/identity/respond`,
+      { accept }
+    ),
 };

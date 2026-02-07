@@ -47,14 +47,27 @@ export const useAuthStore = create<AuthState>()(
 
       setAuth: ({ user, token }) => {
         localStorage.setItem("auth_token", token);
-        set({ user, token, isAuthenticated: true });
+        set({
+          user,
+          token,
+          isAuthenticated: true,
+          visibilityLevel: user.visibilityLevel ?? "anonymous",
+        });
       },
 
       setUser: (user) =>
-        set((state) => ({ user, isAuthenticated: true, token: state.token })),
+        set((state) => ({
+          user,
+          isAuthenticated: true,
+          token: state.token,
+          visibilityLevel: user.visibilityLevel ?? state.visibilityLevel,
+        })),
 
       setVisibilityLevel: (level) =>
-        set({ visibilityLevel: level }),
+        set((state) => ({
+          visibilityLevel: level,
+          user: state.user ? { ...state.user, visibilityLevel: level } : state.user,
+        })),
 
       logout: () => {
         localStorage.removeItem("auth_token");

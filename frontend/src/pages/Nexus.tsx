@@ -2,8 +2,15 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import * as d3 from "d3";
 import { motion, AnimatePresence } from "framer-motion";
 import { ZoomIn, ZoomOut, RotateCcw, Tag, Crosshair } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useGraphData } from "../hooks/useGraph";
-import { calculateNodeRadius, getNodeColor, getEdgeOpacity } from "../utils/graphUtils";
+import {
+  calculateNodeRadius,
+  getNodeColor,
+  getEdgeOpacity,
+  getNodeGroupLabel,
+  getNodeStrokeColor,
+} from "../utils/graphUtils";
 import { Skeleton } from "../components/ui/Skeleton";
 import { useUIStore } from "../stores/uiStore";
 import type { GraphNode, GraphEdge } from "../types";
@@ -21,7 +28,67 @@ interface SimEdge {
   weight: number;
 }
 
+type NodeGroup = "tech" | "finance" | "business" | "community";
+
+function groupForNode(node: Pick<GraphNode, "group">): NodeGroup {
+  const group = (node.group ?? "community").toLowerCase();
+  if (group === "tech" || group === "finance" || group === "business") {
+    return group;
+  }
+  return "community";
+}
+
+function pathForGroup(group: NodeGroup, radius: number) {
+  const safeRadius = Math.max(4, radius);
+
+  if (group === "tech") {
+    const angleStep = Math.PI / 3;
+    const points = Array.from({ length: 6 }, (_, index) => {
+      const angle = -Math.PI / 2 + angleStep * index;
+      return [Math.cos(angle) * safeRadius, Math.sin(angle) * safeRadius];
+    });
+    return `M ${points.map((point) => `${point[0]} ${point[1]}`).join(" L ")} Z`;
+  }
+
+  if (group === "finance") {
+    const r = safeRadius * 0.96;
+    return `M 0 ${-r} L ${r} 0 L 0 ${r} L ${-r} 0 Z`;
+  }
+
+  if (group === "business") {
+    const r = safeRadius * 0.92;
+    const cut = r * 0.34;
+    return [
+      `M ${-r + cut} ${-r}`,
+      `L ${r - cut} ${-r}`,
+      `L ${r} ${-r + cut}`,
+      `L ${r} ${r - cut}`,
+      `L ${r - cut} ${r}`,
+      `L ${-r + cut} ${r}`,
+      `L ${-r} ${r - cut}`,
+      `L ${-r} ${-r + cut}`,
+      "Z",
+    ].join(" ");
+  }
+
+  const r = safeRadius * 0.95;
+  return `M 0 ${-r} L ${r} ${r * 0.28} L 0 ${r} L ${-r} ${r * 0.28} Z`;
+}
+
+function pathForNode(node: GraphNode) {
+  const radius = calculateNodeRadius(node);
+  return pathForGroup(groupForNode(node), radius);
+}
+
+function shapeLabel(group: NodeGroup) {
+  if (group === "tech") return "Hex";
+  if (group === "finance") return "Diamond";
+  if (group === "business") return "Tile";
+  return "Kite";
+}
+
 export default function Nexus() {
+  const navigate = useNavigate();
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const simulationCleanupRef = useRef<(() => void) | null>(null);
@@ -47,16 +114,16 @@ export default function Nexus() {
 
     const svg = d3.select(svgRef.current);
     const g = svg.select("g");
-    const circles = g.selectAll<SVGCircleElement, SimNode>("circle");
+    const renderedNodes = g.selectAll<SVGPathElement, SimNode>("path.nexus-node");
 
-    if (circles.empty()) return;
+    if (renderedNodes.empty()) return;
 
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
 
-    circles.each((d) => {
+    renderedNodes.each((d) => {
       const radius = calculateNodeRadius(d);
       minX = Math.min(minX, d.x - radius);
       minY = Math.min(minY, d.y - radius);
@@ -126,7 +193,6 @@ export default function Nexus() {
           canvasBottom: "#071225",
           tile: "rgba(148, 163, 184, 0.08)",
           link: "rgba(151, 168, 193, 0.9)",
-          nodeStroke: "#0b1324",
           label: "#c9d7ec",
         }
       : {
@@ -134,7 +200,6 @@ export default function Nexus() {
           canvasBottom: "#ecf2fb",
           tile: "rgba(71, 85, 105, 0.1)",
           link: "rgba(100, 116, 139, 0.7)",
-          nodeStroke: "#f8fbff",
           label: "#334155",
         };
 
@@ -274,15 +339,18 @@ export default function Nexus() {
 
     const node = g
       .append("g")
-      .selectAll<SVGCircleElement, SimNode>("circle")
+      .selectAll<SVGPathElement, SimNode>("path.nexus-node")
       .data(nodes)
-      .join("circle")
-      .attr("r", (d) => calculateNodeRadius(d))
-      .attr("fill", (d) => getNodeColor(d))
+      .join("path")
+      .attr("class", "nexus-node")
+      .attr("d", (d) => pathForNode(d))
+      .attr("fill", (d) => getNodeColor(d, darkMode))
       .attr("opacity", 0.96)
       .attr("cursor", "pointer")
-      .attr("stroke", palette.nodeStroke)
-      .attr("stroke-width", (d) => (d.type === "company" ? 2.4 : 1.8));
+      .attr("stroke", (d) => getNodeStrokeColor(d, darkMode))
+      .attr("stroke-opacity", darkMode ? 0.95 : 0.82)
+      .attr("stroke-width", (d) => (d.type === "company" ? 2.5 : 2))
+      .attr("vector-effect", "non-scaling-stroke");
 
     const labels = g
       .append("g")
@@ -307,15 +375,14 @@ export default function Nexus() {
       .attr("y2", (d) => d.target.y);
 
     node
-      .attr("cx", (d) => d.x)
-      .attr("cy", (d) => d.y);
+      .attr("transform", (d) => `translate(${d.x},${d.y})`);
 
     labels
       .attr("x", (d) => d.x)
       .attr("y", (d) => d.y);
 
     const drag = d3
-      .drag<SVGCircleElement, SimNode>()
+      .drag<SVGPathElement, SimNode>()
       .on("start", (event, d) => {
         if (!event.active) simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
@@ -334,6 +401,21 @@ export default function Nexus() {
     node.call(drag);
 
     node
+      .on("click", (_event, d) => {
+        if (d.type === "company") {
+          navigate(`/company/${d.id}`);
+          return;
+        }
+        navigate(`/profile/${d.id}`);
+      })
+      .on("contextmenu", (event, d) => {
+        event.preventDefault();
+        if (d.type === "company") {
+          navigate(`/company/${d.id}`);
+          return;
+        }
+        navigate(`/profile/${d.id}`);
+      })
       .on("mouseenter", (event, d) => {
         setHoveredNode(d);
         clampTooltip(event.pageX, event.pageY);
@@ -376,8 +458,7 @@ export default function Nexus() {
         .attr("y2", (d) => d.target.y);
 
       node
-        .attr("cx", (d) => d.x)
-        .attr("cy", (d) => d.y);
+        .attr("transform", (d) => `translate(${d.x},${d.y})`);
 
       labels
         .attr("x", (d) => d.x)
@@ -398,7 +479,7 @@ export default function Nexus() {
 
     simulationCleanupRef.current = cleanup;
     return cleanup;
-  }, [clampTooltip, darkMode, dimensions.height, dimensions.width, fitToNodes, graphData]);
+  }, [clampTooltip, darkMode, dimensions.height, dimensions.width, fitToNodes, graphData, navigate]);
 
   useEffect(() => {
     const cleanup = initGraph();
@@ -492,12 +573,23 @@ export default function Nexus() {
 
       <div className="absolute bottom-4 left-4 mosaic-surface rounded-xl p-4 text-xs space-y-2 min-w-[170px]">
         <div className="font-medium text-slate-700 dark:text-slate-200 mb-3">Legend</div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-amber-500" /> <span className="text-slate-500 dark:text-slate-400">Company</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#4f7cff]" /> <span className="text-slate-500 dark:text-slate-400">User</span>
-        </div>
+        {(["tech", "finance", "business", "community"] as NodeGroup[]).map((group) => {
+          const fill = getNodeColor({ id: `${group}-legend`, type: "company", label: group, size: 8, group }, darkMode);
+          const stroke = getNodeStrokeColor(
+            { id: `${group}-legend-stroke`, type: "company", label: group, size: 8, group },
+            darkMode
+          );
+          return (
+            <div key={group} className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="-7 -7 14 14" className="shrink-0">
+                <path d={pathForGroup(group, 5.2)} fill={fill} stroke={stroke} strokeWidth={1.4} />
+              </svg>
+              <span className="text-slate-500 dark:text-slate-400">
+                {getNodeGroupLabel(group)} ({shapeLabel(group)})
+              </span>
+            </div>
+          );
+        })}
         <p className="text-slate-500 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 mt-2">Node size = contribution</p>
       </div>
 
@@ -514,7 +606,7 @@ export default function Nexus() {
               {hoveredNode.label}
             </p>
             <p className="text-xs text-slate-500 capitalize">
-              {hoveredNode.type}
+              {getNodeGroupLabel(hoveredNode.group)} {hoveredNode.type}
             </p>
             <p className="text-xs text-slate-500 mt-1">Score: {hoveredNode.size}</p>
           </motion.div>

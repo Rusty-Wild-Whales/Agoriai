@@ -99,9 +99,10 @@ function AnimatedSection({
 }
 
 export default function Landing() {
-  const { scrollYProgress } = useScroll();
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.12], [1, 0]);
-  const heroY = useTransform(scrollYProgress, [0, 0.12], [0, -30]);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { scrollY } = useScroll({ container: scrollContainerRef });
+  const heroOpacity = useTransform(scrollY, [0, 160], [1, 0]);
+  const heroY = useTransform(scrollY, [0, 160], [0, -30]);
   const { data: platformStats } = useQuery({
     queryKey: ["platform-stats"],
     queryFn: () => agoraApi.getPlatformStats(),
@@ -111,42 +112,47 @@ export default function Landing() {
   const countFormatter = new Intl.NumberFormat("en-US");
   const formatCount = (value: number | undefined) =>
     typeof value === "number" ? countFormatter.format(Math.round(value)) : "—";
-  const formatPercent = (value: number) => `${value.toFixed(1)}%`;
-  const formatRatio = (value: number) => `${value.toFixed(2)}x`;
+  const formattedUpdatedAt = platformStats
+    ? new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(new Date(platformStats.generatedAt))
+    : "Updating...";
 
   return (
-    <div className="relative min-h-screen bg-[#060e1b] font-body overflow-x-hidden">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <StarField />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(245,158,11,0.14),transparent_46%),radial-gradient(circle_at_82%_8%,rgba(56,189,248,0.14),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(245,158,11,0.06)_0%,transparent_24%,rgba(71,85,105,0.12)_50%,transparent_72%,rgba(245,158,11,0.05)_100%)]" />
-      </div>
-
-      <div className="relative z-10">
+    <div className="relative h-screen bg-[#070f1d] font-body overflow-hidden">
+      <div
+        ref={scrollContainerRef}
+        className="relative z-10 h-full overflow-y-auto overflow-x-hidden snap-y snap-proximity scroll-smooth"
+      >
         {/* Hero Section */}
         <motion.section
-          style={{ opacity: heroOpacity, y: heroY }}
-          className="relative min-h-screen flex flex-col items-center justify-center"
+          className="relative min-h-screen snap-start snap-always flex flex-col items-center justify-center overflow-hidden"
         >
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.08)_0%,_transparent_62%)]" />
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <StarField />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(245,158,11,0.14),transparent_46%),radial-gradient(circle_at_82%_8%,rgba(56,189,248,0.14),transparent_50%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(245,158,11,0.06)_0%,transparent_24%,rgba(71,85,105,0.12)_50%,transparent_72%,rgba(245,158,11,0.05)_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.08)_0%,_transparent_62%)]" />
+            <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent via-[#070f1d]/75 to-[#070f1d]" />
+          </div>
 
           {/* Hero Content */}
-          <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+          <motion.div
+            style={{ opacity: heroOpacity, y: heroY }}
+            className="relative z-10 text-center px-6 max-w-4xl mx-auto"
+          >
             <motion.h1
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0.65, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+              transition={{ duration: 1, delay: 0, ease: [0.25, 1, 0.25, 1] }}
               className="font-display text-6xl md:text-8xl font-bold text-white mb-8 tracking-tight"
               style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
             >
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 1.4, delay: 0.3 }}
-                className="text-white"
-              >
-                agoriai
-              </motion.span>
+              <span className="text-white">agoriai</span>
             </motion.h1>
 
             <motion.p
@@ -181,10 +187,11 @@ export default function Landing() {
                 </Button>
               </Link>
             </motion.div>
-          </div>
+          </motion.div>
 
           {/* Scroll indicator */}
           <motion.div
+            style={{ opacity: heroOpacity }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.5, duration: 0.8 }}
@@ -202,13 +209,14 @@ export default function Landing() {
           </motion.div>
         </motion.section>
 
-        {/* Problem Section */}
-        <section className="relative py-28 px-6 bg-transparent">
+        <div className="relative -mt-px bg-[#070f1d]">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#070f1d]/0 via-[#070f1d]/90 to-[#070f1d]" />
+
+          {/* Problem Section */}
+          <section className="relative min-h-screen snap-start snap-always py-24 md:py-28 px-6 bg-transparent flex items-center">
           <div className="max-w-6xl mx-auto">
             <AnimatedSection className="text-center mb-16">
-              <span className="inline-block px-4 py-2 rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium tracking-wider mb-6 border border-amber-500/20">
-                PLATFORM SNAPSHOT
-              </span>
+              <SectionEyebrow label="Mosaic Metrics" />
               <h2 className="font-display text-3xl md:text-5xl font-bold text-white leading-tight">
                 Verified Community Metrics
               </h2>
@@ -248,53 +256,35 @@ export default function Landing() {
             </div>
 
             <AnimatedSection delay={0.2} className="mt-12 text-center">
-              <h3 className="font-display text-2xl font-semibold text-white">Community Signals</h3>
+              <h3 className="font-display text-2xl font-semibold text-white">Career Access Signals</h3>
               <p className="mt-2 text-sm text-slate-400">
-                Live rates derived from platform activity.
+                Context metrics that motivate the mission.
               </p>
             </AnimatedSection>
 
             <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                value={platformStats?.derived.usersWithPostsRate}
-                label="Members who have posted"
-                delay={0.04}
-                formatter={(value) => formatPercent(value)}
-              />
-              <StatCard
-                value={platformStats?.derived.connectedUsersRate}
-                label="Members with connections"
-                delay={0.12}
-                formatter={(value) => formatPercent(value)}
-              />
-              <StatCard
-                value={platformStats?.derived.commentsPerPost}
-                label="Comments per post"
-                delay={0.2}
-                formatter={(value) => formatRatio(value)}
-              />
-              <StatCard
-                value={platformStats?.derived.messagesPerUser}
-                label="Messages per member"
-                delay={0.28}
-                formatter={(value) => formatRatio(value)}
-              />
+              <ContextSignalCard value="3x" label="More likely to get interviews with connections" delay={0.04} />
+              <ContextSignalCard value="68%" label="Feel they lack career guidance" delay={0.12} />
+              <ContextSignalCard value="42%" label="Jobs filled via informal networks" delay={0.2} />
+              <ContextSignalCard value="$12K" label="First job salary gap" delay={0.28} />
             </div>
 
-            <p className="mt-7 text-center text-xs text-slate-400">
-              Source: live database ({platformStats?.source ?? "live_database"}) • updated{" "}
-              {platformStats ? new Date(platformStats.generatedAt).toLocaleString() : "..."}
-            </p>
+            <div className="mt-7 flex justify-center">
+              <p className="inline-flex items-center gap-2 rounded-full border border-slate-600/35 bg-slate-900/45 px-4 py-2 font-body text-xs tracking-[0.02em] text-slate-300">
+                <span className="font-semibold uppercase tracking-[0.08em] text-slate-400">Live Data</span>
+                <span>Platform database</span>
+                <span className="text-slate-500">•</span>
+                <span className="text-slate-200 tabular-nums">{formattedUpdatedAt}</span>
+              </p>
+            </div>
           </div>
-        </section>
+          </section>
 
-        {/* How It Works */}
-        <section className="relative py-28 px-6 bg-transparent">
+          {/* How It Works */}
+          <section className="relative min-h-screen snap-start snap-always py-24 md:py-28 px-6 bg-transparent flex items-center">
           <div className="max-w-6xl mx-auto">
             <AnimatedSection className="text-center mb-16">
-              <span className="inline-block px-4 py-2 rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium tracking-wider mb-6 border border-amber-500/20">
-                HOW IT WORKS
-              </span>
+              <SectionEyebrow label="Mosaic Journey" />
               <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
                 A new model for career access
               </h2>
@@ -321,10 +311,10 @@ export default function Landing() {
               />
             </div>
           </div>
-        </section>
+          </section>
 
-        {/* CTA Section */}
-        <section className="relative py-32 px-6 bg-transparent">
+          {/* CTA Section */}
+          <section className="relative min-h-screen snap-start snap-always py-24 md:py-32 px-6 bg-transparent flex items-center">
           <div className="max-w-3xl mx-auto text-center">
             <AnimatedSection>
               <h2 className="font-display text-3xl md:text-5xl font-bold text-white mb-6">
@@ -343,17 +333,18 @@ export default function Landing() {
               </Link>
             </AnimatedSection>
           </div>
-        </section>
+          </section>
 
-        {/* Footer */}
-        <footer className="bg-transparent py-10 px-6 border-t border-slate-700/30">
+          {/* Footer */}
+          <footer className="bg-transparent py-10 px-6 border-t border-slate-700/30">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <span className="font-display text-lg font-semibold text-white">agoriai</span>
             <p className="text-slate-400 text-sm">
               Where contribution matters more than background.
             </p>
           </div>
-        </footer>
+          </footer>
+        </div>
       </div>
     </div>
   );
@@ -412,6 +403,15 @@ function AnimatedMetricValue({
   return formatter(displayValue);
 }
 
+function SectionEyebrow({ label }: { label: string }) {
+  return (
+    <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-slate-900/60 px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300 shadow-[0_0_0_1px_rgba(245,158,11,0.14)_inset]">
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+      {label}
+    </span>
+  );
+}
+
 // Stat card with stronger contrast
 function StatCard({
   value,
@@ -441,6 +441,32 @@ function StatCard({
       <span className="block text-sm text-slate-300 leading-relaxed">
         {label}
       </span>
+    </motion.div>
+  );
+}
+
+function ContextSignalCard({
+  value,
+  label,
+  delay,
+}: {
+  value: string;
+  label: string;
+  delay: number;
+}) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-12% 0px -18% 0px" });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, delay, ease: [0.25, 0.1, 0.25, 1] }}
+      className="p-6 rounded-xl bg-slate-800/40 border border-slate-600/30 text-center hover:border-amber-500/30 hover:bg-slate-800/60 transition-all duration-300"
+    >
+      <span className="block font-display text-4xl md:text-5xl font-bold text-amber-400 mb-3">{value}</span>
+      <span className="block text-sm text-slate-300 leading-relaxed">{label}</span>
     </motion.div>
   );
 }

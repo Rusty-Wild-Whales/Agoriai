@@ -13,6 +13,8 @@ const LEET_MAP: Record<string, string> = {
   "2": "z",
 };
 
+const INVISIBLE_CHAR_PATTERN = /[\u200b-\u200f\u2060\ufeff]/g;
+
 const BLOCKED_WORDS = [
   "asshole",
   "bastard",
@@ -37,12 +39,29 @@ const BLOCKED_WORDS = [
   "shit",
   "slut",
   "whore",
+  "cock",
+  "cum",
+  "fucking",
+  "fucked",
+  "fucker",
+  "fuk",
+  "fk",
+  "nazi",
+  "hitler",
+  "incest",
+  "anal",
+  "blowjob",
+  "dildo",
+  "sex",
 ] as const;
 
 const BLOCKED_PHRASES = [
   /\bkill\s+yourself\b/i,
   /\bgo\s+die\b/i,
   /\bkys\b/i,
+  /\bhang\s+yourself\b/i,
+  /\brape\s+yourself\b/i,
+  /\bheil\s+hitler\b/i,
 ] as const;
 
 export type ModerationMatch = {
@@ -53,15 +72,18 @@ export type ModerationMatch = {
 function normalizeText(value: string) {
   return value
     .normalize("NFKD")
+    .replace(INVISIBLE_CHAR_PATTERN, "")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .split("")
     .map((char) => LEET_MAP[char] ?? char)
-    .join("");
+    .join("")
+    .replace(/[_~`*^]+/g, "")
+    .replace(/[^\da-z\s]/g, " ");
 }
 
 function collapseRepeatingChars(value: string) {
-  return value.replace(/(.)\1{2,}/g, "$1$1");
+  return value.replace(/([a-z])\1{2,}/g, "$1$1");
 }
 
 function isWithinOneEditDistance(a: string, b: string) {
@@ -99,7 +121,7 @@ function isWithinOneEditDistance(a: string, b: string) {
 }
 
 export function detectInappropriateLanguage(value: string): ModerationMatch {
-  const normalized = collapseRepeatingChars(normalizeText(value));
+  const normalized = collapseRepeatingChars(normalizeText(value)).replace(/\s+/g, " ").trim();
   const matches = new Set<string>();
 
   for (const pattern of BLOCKED_PHRASES) {
@@ -109,6 +131,13 @@ export function detectInappropriateLanguage(value: string): ModerationMatch {
   }
 
   const tokens = normalized.split(/[^a-z]+/g).filter((token) => token.length > 1);
+  const compactTokens = tokens.map((token) => token.replace(/(.)\1+/g, "$1"));
+
+  const joinedWithNoGaps = tokens.join("");
+  const initialismJoined = tokens
+    .filter((token) => token.length === 1)
+    .join("");
+
   for (const token of tokens) {
     for (const blockedWord of BLOCKED_WORDS) {
       if (token === blockedWord) {
@@ -122,9 +151,23 @@ export function detectInappropriateLanguage(value: string): ModerationMatch {
     }
   }
 
+  for (const token of compactTokens) {
+    for (const blockedWord of BLOCKED_WORDS) {
+      if (blockedWord.length >= 4 && token === blockedWord) {
+        matches.add(blockedWord);
+      }
+    }
+  }
+
   const alphaJoined = normalized.replace(/[^a-z]/g, "");
   for (const blockedWord of BLOCKED_WORDS) {
     if (blockedWord.length >= 4 && alphaJoined.includes(blockedWord)) {
+      matches.add(blockedWord);
+    }
+    if (blockedWord.length >= 4 && joinedWithNoGaps.includes(blockedWord)) {
+      matches.add(blockedWord);
+    }
+    if (initialismJoined.includes(blockedWord)) {
       matches.add(blockedWord);
     }
   }

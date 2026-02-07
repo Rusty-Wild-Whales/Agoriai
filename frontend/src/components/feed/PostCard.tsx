@@ -7,6 +7,8 @@ import {
   MessageCircle,
   ChevronDown,
   ChevronUp,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Avatar } from "../ui/Avatar";
@@ -16,6 +18,7 @@ import { formatDate, categoryLabel } from "../../utils/helpers";
 import { CommentThread } from "./CommentThread";
 import { agoraApi } from "../../services/agoraApi";
 import { Markdown } from "../ui/Markdown";
+import { useAuthStore } from "../../stores/authStore";
 
 const categoryVariants: Record<string, "default" | "accent" | "success" | "warning"> = {
   "interview-experience": "accent",
@@ -27,23 +30,39 @@ const categoryVariants: Record<string, "default" | "accent" | "success" | "warni
 
 interface PostCardProps {
   post: Post;
+  highlighted?: boolean;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, highlighted = false }: PostCardProps) {
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((state) => state.user);
   const [showFullContent, setShowFullContent] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [vote, setVote] = useState<-1 | 0 | 1>(post.userVote ?? 0);
   const [voteCount, setVoteCount] = useState(post.upvotes);
+  const [draftTitle, setDraftTitle] = useState(post.title);
+  const [draftContent, setDraftContent] = useState(post.content);
+  const [draftCompany, setDraftCompany] = useState(post.companyName ?? "");
+  const [draftTags, setDraftTags] = useState(post.tags.join(", "));
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentsError, setCommentsError] = useState<string | null>(null);
+  const isOwnPost = currentUser?.id === post.authorId;
 
   useEffect(() => {
     setVote(post.userVote ?? 0);
     setVoteCount(post.upvotes);
-  }, [post.id, post.upvotes, post.userVote]);
+    setDraftTitle(post.title);
+    setDraftContent(post.content);
+    setDraftCompany(post.companyName ?? "");
+    setDraftTags(post.tags.join(", "));
+    setEditing(false);
+    setEditError(null);
+  }, [post.id, post.upvotes, post.userVote, post.title, post.content, post.companyName, post.tags]);
 
   const loadComments = async () => {
     if (comments.length > 0) return;
@@ -92,13 +111,66 @@ export function PostCard({ post }: PostCardProps) {
     }
   };
 
+  const handleSaveEdit = async () => {
+    const title = draftTitle.trim();
+    const content = draftContent.trim();
+    if (!title || !content) {
+      setEditError("Title and content are required.");
+      return;
+    }
+
+    setSavingEdit(true);
+    setEditError(null);
+    try {
+      const trimmedCompany = draftCompany.trim();
+      const shouldClearCompany = !trimmedCompany && Boolean(post.companyId);
+      await agoraApi.updatePost(post.id, {
+        title,
+        content,
+        tags: draftTags
+          .split(",")
+          .map((tag) => tag.trim().toLowerCase())
+          .filter(Boolean),
+        companyId: shouldClearCompany ? null : undefined,
+        companyName: trimmedCompany || undefined,
+      });
+      setEditing(false);
+      void queryClient.invalidateQueries({ queryKey: ["posts"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : "Unable to save post changes.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeletePost = async () => {
+    const confirmed = window.confirm("Delete this post permanently?");
+    if (!confirmed) return;
+
+    try {
+      await agoraApi.deletePost(post.id);
+      void queryClient.invalidateQueries({ queryKey: ["posts"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["current-user"] });
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : "Unable to delete post.");
+    }
+  };
+
   const contentPreview =
     post.content.length > 200 && !showFullContent
       ? `${post.content.slice(0, 200)}...`
       : post.content;
 
   return (
-    <motion.article layout className="mosaic-surface-strong overflow-hidden rounded-2xl">
+    <motion.article
+      layout
+      id={`post-${post.id}`}
+      className={`mosaic-surface-strong overflow-hidden rounded-2xl transition-all ${
+        highlighted ? "ring-2 ring-amber-500/70 shadow-[0_0_0_1px_rgba(245,158,11,0.4)]" : ""
+      }`}
+    >
       <div className="p-4 md:p-5">
         <header className="mb-3 flex items-center gap-3">
           <Avatar seed={post.authorAvatarSeed} size="sm" />
@@ -109,41 +181,137 @@ export function PostCard({ post }: PostCardProps) {
             >
               {post.authorAlias}
             </Link>
+            {(post.authorRole || post.authorSchool) && (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {[post.authorRole, post.authorSchool].filter(Boolean).join(" • ")}
+              </p>
+            )}
             <p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(post.createdAt)}</p>
           </div>
-          <Badge variant={categoryVariants[post.category] || "default"} className="ml-auto">
-            {categoryLabel(post.category)}
-          </Badge>
-        </header>
-
-        <h3 className="mb-2 font-display text-xl font-semibold text-slate-900 dark:text-white">{post.title}</h3>
-
-        <Markdown
-          content={contentPreview}
-          className="text-sm leading-relaxed text-slate-700 dark:text-slate-300"
-        />
-
-        {post.content.length > 200 && (
-          <button
-            onClick={() => setShowFullContent((prev) => !prev)}
-            className="mt-2 inline-flex cursor-pointer items-center gap-1 text-sm text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-          >
-            {showFullContent ? (
+          <div className="ml-auto flex items-center gap-2">
+            {isOwnPost && (
               <>
-                Show less
-                <ChevronUp size={14} />
-              </>
-            ) : (
-              <>
-                Read more
-                <ChevronDown size={14} />
+                <button
+                  onClick={() => {
+                    setEditing((prev) => !prev);
+                    setEditError(null);
+                  }}
+                  className="cursor-pointer rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-700 dark:hover:text-white"
+                  title="Edit post"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={() => {
+                    void handleDeletePost();
+                  }}
+                  className="cursor-pointer rounded-lg p-1.5 text-rose-500 transition-colors hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                  title="Delete post"
+                >
+                  <Trash2 size={14} />
+                </button>
               </>
             )}
-          </button>
+            <Badge variant={categoryVariants[post.category] || "default"}>{categoryLabel(post.category)}</Badge>
+          </div>
+        </header>
+
+        {editing ? (
+          <div className="space-y-3">
+            <input
+              value={draftTitle}
+              onChange={(event) => setDraftTitle(event.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              placeholder="Post title"
+            />
+            <textarea
+              value={draftContent}
+              onChange={(event) => setDraftContent(event.target.value)}
+              className="min-h-[120px] w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              placeholder="Post content"
+            />
+            <div className="grid gap-2 md:grid-cols-2">
+              <input
+                value={draftCompany}
+                onChange={(event) => setDraftCompany(event.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                placeholder="Company (optional)"
+              />
+              <input
+                value={draftTags}
+                onChange={(event) => setDraftTags(event.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                placeholder="tags, separated, by commas"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => {
+                  setEditing(false);
+                  setDraftTitle(post.title);
+                  setDraftContent(post.content);
+                  setDraftCompany(post.companyName ?? "");
+                  setDraftTags(post.tags.join(", "));
+                  setEditError(null);
+                }}
+                className="cursor-pointer rounded-lg px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  void handleSaveEdit();
+                }}
+                disabled={savingEdit}
+                className="cursor-pointer rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-slate-900 transition-colors hover:bg-amber-400 disabled:opacity-60"
+              >
+                {savingEdit ? "Saving..." : "Save"}
+              </button>
+            </div>
+            {editError && (
+              <p className="rounded-lg border border-rose-300/70 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
+                {editError}
+              </p>
+            )}
+          </div>
+        ) : (
+          <>
+            <h3 className="mb-2 font-display text-xl font-semibold text-slate-900 dark:text-white">{post.title}</h3>
+
+            <Markdown
+              content={contentPreview}
+              className="text-sm leading-relaxed text-slate-700 dark:text-slate-300"
+            />
+
+            {post.content.length > 200 && (
+              <button
+                onClick={() => setShowFullContent((prev) => !prev)}
+                className="mt-2 inline-flex cursor-pointer items-center gap-1 text-sm text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                {showFullContent ? (
+                  <>
+                    Show less
+                    <ChevronUp size={14} />
+                  </>
+                ) : (
+                  <>
+                    Read more
+                    <ChevronDown size={14} />
+                  </>
+                )}
+              </button>
+            )}
+          </>
         )}
 
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {post.companyName && <Badge variant="accent">{post.companyName}</Badge>}
+          {post.companyId && post.companyName && (
+            <Link to={`/company/${post.companyId}`}>
+              <Badge variant="accent" className="cursor-pointer hover:brightness-110">
+                {post.companyName}
+              </Badge>
+            </Link>
+          )}
           {post.tags.map((tag) => (
             <Badge key={tag}>{tag}</Badge>
           ))}
@@ -218,7 +386,7 @@ export function PostCard({ post }: PostCardProps) {
               comments={comments}
               error={commentsError}
               loading={loadingComments}
-              onCommentAdded={() => setCommentCount((value) => value + 1)}
+              onCommentsCountChange={setCommentCount}
             />
           </motion.div>
         )}

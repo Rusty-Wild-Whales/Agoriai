@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RefreshCw, ArrowRight, ArrowLeft, Check, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Avatar } from "../components/ui/Avatar";
-import { generateAnonName } from "../utils/helpers";
+import { generateRandomAnonName } from "../utils/helpers";
 import { StarField } from "./Landing";
 import { agoraApi } from "../services/agoraApi";
 import { useAuthStore } from "../stores/authStore";
@@ -43,6 +43,10 @@ const interests = [
 
 type AuthMode = "register" | "login";
 type EmailStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "error";
+type OnboardingIdentity = {
+  alias: string;
+  avatarSeed: string;
+};
 
 function isAcademicEmail(email: string) {
   const normalized = email.trim().toLowerCase();
@@ -63,6 +67,26 @@ function isAcademicEmail(email: string) {
   );
 }
 
+function createIdentitySeed() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `onboard-${crypto.randomUUID()}`;
+  }
+  return `onboard-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createRandomIdentity(previous?: OnboardingIdentity): OnboardingIdentity {
+  const alias = generateRandomAnonName(previous?.alias);
+  let avatarSeed = createIdentitySeed();
+  let attempts = 0;
+
+  while (previous && avatarSeed === previous.avatarSeed && attempts < 4) {
+    avatarSeed = createIdentitySeed();
+    attempts += 1;
+  }
+
+  return { alias, avatarSeed };
+}
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -70,32 +94,38 @@ export default function Onboarding() {
   const [mode, setMode] = useState<AuthMode>("register");
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
-  const [seedCounter, setSeedCounter] = useState(0);
+  const [identity, setIdentity] = useState<OnboardingIdentity>(() => createRandomIdentity());
   const [university, setUniversity] = useState("");
   const [gradYear, setGradYear] = useState("2026");
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [schoolEmail, setSchoolEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [realName, setRealName] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [emailStatus, setEmailStatus] = useState<EmailStatus>("idle");
   const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
   const [showUniversityOptions, setShowUniversityOptions] = useState(false);
 
-  const seed = `onboard-${seedCounter}`;
-  const alias = generateAnonName(seed);
+  const alias = identity.alias;
+  const seed = identity.avatarSeed;
 
   const resetFlow = useCallback((nextMode: AuthMode) => {
     setMode(nextMode);
     setStep(0);
     setDirection(1);
+    if (nextMode === "register") {
+      setIdentity((previous) => createRandomIdentity(previous));
+    }
     setAuthError(null);
     setEmailStatus("idle");
     setEmailStatusMessage(null);
   }, []);
 
-  const regenerate = () => setSeedCounter((value) => value + 1);
+  const regenerate = useCallback(() => {
+    setIdentity((previous) => createRandomIdentity(previous));
+  }, []);
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
@@ -119,7 +149,9 @@ export default function Onboarding() {
         emailStatus === "available"
       );
     }
-    if (step === 2) return Boolean(university.trim()) && Boolean(gradYear.trim());
+    if (step === 2) {
+      return Boolean(realName.trim()) && Boolean(university.trim()) && Boolean(gradYear.trim());
+    }
     if (step === 3) return selectedInterests.length > 0;
     return true;
   };
@@ -241,6 +273,7 @@ export default function Onboarding() {
       const response = await agoraApi.register({
         schoolEmail: schoolEmail.trim().toLowerCase(),
         password,
+        realName: realName.trim(),
         university: university.trim(),
         graduationYear,
         fieldsOfInterest: selectedInterests.map((interest) => interest.toLowerCase()),
@@ -413,6 +446,20 @@ export default function Onboarding() {
       </div>
 
       <div className="flex-1 space-y-5">
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-200">Full Name</label>
+          <input
+            type="text"
+            placeholder="Jane Doe"
+            value={realName}
+            onChange={(event) => setRealName(event.target.value)}
+            className="w-full rounded-xl border border-slate-600/75 bg-slate-900/55 px-4 py-3 text-white placeholder-slate-400 transition-colors focus:border-amber-500/60 focus:outline-none"
+          />
+          <p className="mt-2 text-xs text-slate-400">
+            Your real name stays private unless you choose to reveal identity later.
+          </p>
+        </div>
+
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-200">University</label>
           <div className="relative">

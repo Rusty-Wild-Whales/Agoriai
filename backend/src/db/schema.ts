@@ -19,6 +19,7 @@ export const usersTable = pgTable("users", {
   realName: text("real_name"),
   university: text("university").notNull(),
   graduationYear: integer("graduation_year").notNull(),
+  visibilityLevel: text("visibility_level").notNull().default("anonymous"),
   fieldsOfInterest: text("fields_of_interest")
     .array()
     .notNull()
@@ -219,6 +220,9 @@ export const conversationsTable = pgTable(
   "conversations",
   {
     id: text("id").primaryKey(),
+    isIdentityMutuallyRevealed: boolean("is_identity_mutually_revealed").notNull().default(false),
+    identityRevealRequestedBy: text("identity_reveal_requested_by"),
+    identityRevealRequestedAt: timestamp("identity_reveal_requested_at", { withTimezone: true }),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -260,6 +264,7 @@ export const messagesTable = pgTable(
     senderId: text("sender_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("text"),
     content: text("content").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

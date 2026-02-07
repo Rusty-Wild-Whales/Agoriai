@@ -61,12 +61,38 @@ function hashSeed(seed: string): number {
   return hash >>> 0;
 }
 
+function composeAnonName(adjectiveIndex: number, nounIndex: number): string {
+  const adj = adjectives[adjectiveIndex % adjectives.length];
+  const noun = nouns[nounIndex % nouns.length];
+  return `${adj}${noun}`;
+}
+
 export function generateAnonName(seed: string): string {
   const adjectiveHash = hashSeed(`${seed}:adj`);
   const nounHash = hashSeed(`${seed}:noun:${adjectiveHash}`);
-  const adj = adjectives[adjectiveHash % adjectives.length];
-  const noun = nouns[nounHash % nouns.length];
-  return `${adj}${noun}`;
+  return composeAnonName(adjectiveHash, nounHash);
+}
+
+function randomIndex(max: number): number {
+  if (max <= 0) return 0;
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = new Uint32Array(1);
+    crypto.getRandomValues(bytes);
+    return bytes[0] % max;
+  }
+  return Math.floor(Math.random() * max);
+}
+
+export function generateRandomAnonName(previousName?: string): string {
+  let nextName = composeAnonName(randomIndex(adjectives.length), randomIndex(nouns.length));
+  let attempts = 0;
+
+  while (previousName && nextName === previousName && attempts < 8) {
+    nextName = composeAnonName(randomIndex(adjectives.length), randomIndex(nouns.length));
+    attempts += 1;
+  }
+
+  return nextName;
 }
 
 export function hashToHSL(seed: string): { h: number; s: number; l: number } {

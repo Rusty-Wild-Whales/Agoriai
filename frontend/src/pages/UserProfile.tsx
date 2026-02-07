@@ -122,6 +122,8 @@ export default function UserProfile() {
   }, [id, currentUser?.id]);
 
   const isOwnProfile = Boolean(user && currentUser && user.id === currentUser.id);
+  const canShowRole = Boolean(user && (isOwnProfile || user.visibilityLevel === "role" || user.visibilityLevel === "school" || user.visibilityLevel === "realName"));
+  const canShowSchool = Boolean(user && (isOwnProfile || user.visibilityLevel === "school" || user.visibilityLevel === "realName"));
 
   const handleConnect = async () => {
     if (!user || !currentUser || isOwnProfile) return;
@@ -181,7 +183,7 @@ export default function UserProfile() {
         <div className="flex flex-col items-center text-center">
           <Avatar seed={user.anonAvatarSeed} size="xl" />
           <h1 className="font-display text-2xl font-bold text-primary-900 dark:text-white mt-4">
-            {user.isAnonymous ? user.anonAlias : user.realName || user.anonAlias}
+            {user.realName || user.anonAlias}
           </h1>
           <div className="flex items-center gap-1.5 text-sm text-neutral-500 mt-1">
             {user.isAnonymous ? (
@@ -194,21 +196,25 @@ export default function UserProfile() {
               </>
             )}
           </div>
-          <div className="flex items-center gap-4 mt-3 text-sm text-neutral-500">
-            <span className="flex items-center gap-1">
-              <GraduationCap size={14} /> {user.university}
-            </span>
-            <span className="flex items-center gap-1">
-              <Calendar size={14} /> Class of {user.graduationYear}
-            </span>
-          </div>
-          <div className="flex flex-wrap justify-center gap-1.5 mt-3">
-            {user.fieldsOfInterest.map((field) => (
-              <Badge key={field} variant="accent">
-                {field}
-              </Badge>
-            ))}
-          </div>
+          {canShowSchool && (
+            <div className="mt-3 flex items-center gap-4 text-sm text-neutral-500">
+              <span className="flex items-center gap-1">
+                <GraduationCap size={14} /> {user.university}
+              </span>
+              <span className="flex items-center gap-1">
+                <Calendar size={14} /> Class of {user.graduationYear}
+              </span>
+            </div>
+          )}
+          {canShowRole && (
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+              {user.fieldsOfInterest.map((field) => (
+                <Badge key={field} variant="accent">
+                  {field}
+                </Badge>
+              ))}
+            </div>
+          )}
 
           {!isOwnProfile && (
             <div className="mt-5 flex flex-wrap justify-center gap-2">

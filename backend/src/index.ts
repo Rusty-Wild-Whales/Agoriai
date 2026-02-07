@@ -12,6 +12,7 @@ import {
   eq,
   gt,
   inArray,
+  isNotNull,
   isNull,
   or,
   sql,
@@ -57,6 +58,8 @@ const db = drizzle(pool);
 
 type UserRow = typeof usersTable.$inferSelect;
 type PostVoteValue = -1 | 0 | 1;
+type VisibilityLevel = "anonymous" | "role" | "school" | "realName";
+type MessageKind = "text" | "identity-request" | "identity-accepted" | "identity-declined";
 
 type UserStats = {
   postsCreated: number;
@@ -71,6 +74,10 @@ type PostResponse = {
   authorId: string;
   authorAlias: string;
   authorAvatarSeed: string;
+  authorVisibilityLevel: VisibilityLevel;
+  authorRole?: string;
+  authorSchool?: string;
+  authorGraduationYear?: number;
   category: string;
   title: string;
   content: string;
@@ -92,6 +99,7 @@ type UserResponse = {
   realName?: string;
   university: string;
   graduationYear: number;
+  visibilityLevel: VisibilityLevel;
   fieldsOfInterest: string[];
   isAnonymous: boolean;
   createdAt: string;
@@ -103,8 +111,13 @@ type CommentResponse = {
   postId: string;
   authorId: string;
   authorAlias: string;
+  authorVisibilityLevel: VisibilityLevel;
+  authorRole?: string;
+  authorSchool?: string;
+  authorGraduationYear?: number;
   content: string;
   upvotes: number;
+  userVote: PostVoteValue;
   isAnonymous: boolean;
   createdAt: string;
   replies?: CommentResponse[];
@@ -132,6 +145,84 @@ type PlatformStats = {
     messagesPerUser: number;
   };
 };
+
+type ConversationIdentityResponse = {
+  isRevealed: boolean;
+  pendingRequest?: {
+    fromUserId: string;
+    fromAlias: string;
+    requestedAt: string;
+    isIncoming: boolean;
+  };
+};
+
+function normalizeVisibilityLevel(level: string | null | undefined): VisibilityLevel {
+  if (level === "role" || level === "school" || level === "realName") {
+    return level;
+  }
+  return "anonymous";
+}
+
+function normalizeMessageKind(kind: string | null | undefined): MessageKind {
+  if (kind === "identity-request" || kind === "identity-accepted" || kind === "identity-declined") {
+    return kind;
+  }
+  return "text";
+}
+
+function getUserVisibilityPresentation(user: {
+  anonAlias: string;
+  realName: string | null;
+  fieldsOfInterest: string[];
+  university: string;
+  graduationYear: number;
+  visibilityLevel: string | null;
+}) {
+  const visibilityLevel = normalizeVisibilityLevel(user.visibilityLevel);
+  const role = user.fieldsOfInterest[0] ?? undefined;
+
+  if (visibilityLevel === "realName") {
+    return {
+      displayName: user.realName?.trim() || user.anonAlias,
+      visibilityLevel,
+      role,
+      school: user.university,
+      graduationYear: user.graduationYear,
+      isAnonymous: false,
+    } as const;
+  }
+
+  if (visibilityLevel === "school") {
+    return {
+      displayName: user.anonAlias,
+      visibilityLevel,
+      role,
+      school: user.university,
+      graduationYear: user.graduationYear,
+      isAnonymous: true,
+    } as const;
+  }
+
+  if (visibilityLevel === "role") {
+    return {
+      displayName: user.anonAlias,
+      visibilityLevel,
+      role,
+      school: undefined,
+      graduationYear: undefined,
+      isAnonymous: true,
+    } as const;
+  }
+
+  return {
+    displayName: user.anonAlias,
+    visibilityLevel,
+    role: undefined,
+    school: undefined,
+    graduationYear: undefined,
+    isAnonymous: true,
+  } as const;
+}
 
 function toIso(value: Date | string | null | undefined): string {
   if (!value) return new Date().toISOString();
@@ -189,18 +280,22 @@ async function computeUserStats(userId: string): Promise<UserStats> {
   };
 }
 
-async function serializeUser(user: UserRow): Promise<UserResponse> {
+async function serializeUser(user: UserRow, viewerUserId?: string): Promise<UserResponse> {
   const stats = await computeUserStats(user.id);
+  const visibilityLevel = normalizeVisibilityLevel(user.visibilityLevel);
+  const isOwner = viewerUserId === user.id;
+  const canSeeRealName = isOwner || visibilityLevel === "realName";
 
   return {
     id: user.id,
     anonAlias: user.anonAlias,
     anonAvatarSeed: user.anonAvatarSeed,
-    realName: user.realName ?? undefined,
+    realName: canSeeRealName ? user.realName ?? undefined : undefined,
     university: user.university,
     graduationYear: user.graduationYear,
+    visibilityLevel,
     fieldsOfInterest: user.fieldsOfInterest,
-    isAnonymous: user.isAnonymous,
+    isAnonymous: !canSeeRealName,
     createdAt: toIso(user.createdAt),
     stats,
   };
@@ -280,6 +375,24 @@ function moderationMessage(field: string) {
   const normalized = field.trim().toLowerCase();
   const label = normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : "Content";
   return `${label} contains inappropriate language. Please revise and try again.`;
+}
+
+function classifySectorFromText(raw: string): "tech" | "finance" | "business" | "community" {
+  const text = raw.toLowerCase();
+
+  if (
+    /(tech|software|engineering|computer|developer|ai|ml|data|cloud|cyber|product|design|startup)/.test(text)
+  ) {
+    return "tech";
+  }
+  if (/(finance|bank|investment|quant|trading|capital|accounting|equity|asset|fund)/.test(text)) {
+    return "finance";
+  }
+  if (/(consult|business|marketing|sales|operations|management|policy|law|strategy|advisor)/.test(text)) {
+    return "business";
+  }
+
+  return "community";
 }
 
 function parseVoteValue(value: unknown): PostVoteValue | null {
@@ -379,6 +492,97 @@ async function resolveCompanyId(companyName?: string, companyId?: string) {
   return companyByName?.id;
 }
 
+async function ensureUserCompanyConnection(userId: string, companyId: string) {
+  const [existing] = await db
+    .select({ id: connectionsTable.id, weight: connectionsTable.weight })
+    .from(connectionsTable)
+    .where(
+      and(
+        eq(connectionsTable.sourceId, userId),
+        eq(connectionsTable.sourceType, "user"),
+        eq(connectionsTable.targetId, companyId),
+        eq(connectionsTable.targetType, "company")
+      )
+    )
+    .limit(1);
+
+  if (!existing) {
+    await db.insert(connectionsTable).values({
+      sourceId: userId,
+      sourceType: "user",
+      targetId: companyId,
+      targetType: "company",
+      weight: 1,
+    });
+    return;
+  }
+
+  await db
+    .update(connectionsTable)
+    .set({ weight: Math.min(existing.weight + 1, 10) })
+    .where(eq(connectionsTable.id, existing.id));
+}
+
+async function countCommentSubtree(commentId: string) {
+  const result = await db.execute(sql<{ total: number }>`
+    with recursive subtree as (
+      select id
+      from comments
+      where id = ${commentId}
+      union all
+      select c.id
+      from comments c
+      inner join subtree s on c.parent_comment_id = s.id
+    )
+    select count(*)::int as total from subtree
+  `);
+
+  return Number(result.rows[0]?.total ?? 0);
+}
+
+async function getConversationIdentity(
+  conversation: {
+    id: string;
+    isIdentityMutuallyRevealed: boolean;
+    identityRevealRequestedBy: string | null;
+    identityRevealRequestedAt: Date | null;
+  },
+  viewerUserId: string
+): Promise<ConversationIdentityResponse> {
+  if (conversation.isIdentityMutuallyRevealed) {
+    return { isRevealed: true };
+  }
+
+  if (!conversation.identityRevealRequestedBy || !conversation.identityRevealRequestedAt) {
+    return { isRevealed: false };
+  }
+
+  const [requester] = await db
+    .select({
+      anonAlias: usersTable.anonAlias,
+      realName: usersTable.realName,
+      visibilityLevel: usersTable.visibilityLevel,
+      fieldsOfInterest: usersTable.fieldsOfInterest,
+      university: usersTable.university,
+      graduationYear: usersTable.graduationYear,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, conversation.identityRevealRequestedBy))
+    .limit(1);
+
+  const display = requester ? getUserVisibilityPresentation(requester).displayName : "Anonymous";
+
+  return {
+    isRevealed: false,
+    pendingRequest: {
+      fromUserId: conversation.identityRevealRequestedBy,
+      fromAlias: display,
+      requestedAt: toIso(conversation.identityRevealRequestedAt),
+      isIncoming: conversation.identityRevealRequestedBy !== viewerUserId,
+    },
+  };
+}
+
 async function fetchPosts(options?: {
   filter?: string;
   where?: SQL<unknown>;
@@ -406,8 +610,13 @@ async function fetchPosts(options?: {
   const baseQuery = db
     .select({
       post: postsTable,
-      authorAlias: usersTable.anonAlias,
       authorAvatarSeed: usersTable.anonAvatarSeed,
+      authorAnonAlias: usersTable.anonAlias,
+      authorRealName: usersTable.realName,
+      authorVisibilityLevel: usersTable.visibilityLevel,
+      authorUniversity: usersTable.university,
+      authorGraduationYear: usersTable.graduationYear,
+      authorFieldsOfInterest: usersTable.fieldsOfInterest,
       companyName: companiesTable.name,
     })
     .from(postsTable)
@@ -440,24 +649,51 @@ async function fetchPosts(options?: {
     );
   }
 
-  return rows.map(({ post, authorAlias, authorAvatarSeed, companyName }) => ({
-    id: post.id,
-    authorId: post.authorId,
-    authorAlias,
-    authorAvatarSeed,
-    category: post.category,
-    title: post.title,
-    content: post.content,
-    companyId: post.companyId ?? undefined,
-    companyName: companyName ?? undefined,
-    tags: post.tags,
-    upvotes: post.upvotes,
-    commentCount: post.commentCount,
-    isAnonymous: post.isAnonymous,
-    createdAt: toIso(post.createdAt),
-    updatedAt: toIso(post.updatedAt),
-    userVote: voteByPostId.get(post.id) ?? 0,
-  })) satisfies PostResponse[];
+  return rows.map(
+    ({
+      post,
+      authorAvatarSeed,
+      authorAnonAlias,
+      authorRealName,
+      authorVisibilityLevel,
+      authorUniversity,
+      authorGraduationYear,
+      authorFieldsOfInterest,
+      companyName,
+    }) => {
+      const visibleAuthor = getUserVisibilityPresentation({
+        anonAlias: authorAnonAlias,
+        realName: authorRealName,
+        visibilityLevel: authorVisibilityLevel,
+        university: authorUniversity,
+        graduationYear: authorGraduationYear,
+        fieldsOfInterest: authorFieldsOfInterest,
+      });
+
+      return {
+        id: post.id,
+        authorId: post.authorId,
+        authorAlias: visibleAuthor.displayName,
+        authorAvatarSeed,
+        authorVisibilityLevel: visibleAuthor.visibilityLevel,
+        authorRole: visibleAuthor.role,
+        authorSchool: visibleAuthor.school,
+        authorGraduationYear: visibleAuthor.graduationYear,
+        category: post.category,
+        title: post.title,
+        content: post.content,
+        companyId: post.companyId ?? undefined,
+        companyName: companyName ?? undefined,
+        tags: post.tags,
+        upvotes: post.upvotes,
+        commentCount: post.commentCount,
+        isAnonymous: visibleAuthor.isAnonymous,
+        createdAt: toIso(post.createdAt),
+        updatedAt: toIso(post.updatedAt),
+        userVote: voteByPostId.get(post.id) ?? 0,
+      } satisfies PostResponse;
+    }
+  );
 }
 
 function buildCommentsTree(
@@ -837,6 +1073,7 @@ const app = new Elysia()
           realName: payload.realName?.trim() || null,
           university,
           graduationYear,
+          visibilityLevel: "anonymous",
           fieldsOfInterest,
           isAnonymous: true,
           postsCreated: 0,
@@ -866,7 +1103,7 @@ const app = new Elysia()
     const token = await createSession(user.id);
     return {
       token,
-      user: await serializeUser(user),
+      user: await serializeUser(user, user.id),
     };
   })
   .post("/api/auth/login", async ({ body, set }) => {
@@ -907,7 +1144,7 @@ const app = new Elysia()
     const token = await createSession(account.user.id);
     return {
       token,
-      user: await serializeUser(account.user),
+      user: await serializeUser(account.user, account.user.id),
     };
   })
   .post("/api/auth/logout", async ({ headers }) => {
@@ -976,7 +1213,36 @@ const app = new Elysia()
       set.status = 401;
       return { message: "Unauthorized" };
     }
-    return await serializeUser(auth.user);
+    return await serializeUser(auth.user, auth.user.id);
+  })
+  .patch("/api/users/me/settings", async ({ headers, body, set }) => {
+    const auth = await getAuthSession(headers as Record<string, string | undefined>);
+    if (!auth) {
+      set.status = 401;
+      return { message: "Unauthorized" };
+    }
+
+    const payload = body as {
+      visibilityLevel?: string;
+    };
+
+    const visibilityLevel = normalizeVisibilityLevel(payload.visibilityLevel);
+
+    const [updated] = await db
+      .update(usersTable)
+      .set({
+        visibilityLevel,
+        isAnonymous: visibilityLevel !== "realName",
+      })
+      .where(eq(usersTable.id, auth.user.id))
+      .returning();
+
+    if (!updated) {
+      set.status = 404;
+      return { message: "User not found" };
+    }
+
+    return await serializeUser(updated, auth.user.id);
   })
   .get("/api/users", async ({ query }) => {
     const search = typeof query.q === "string" ? query.q.trim().toLowerCase() : "";
@@ -996,13 +1262,14 @@ const app = new Elysia()
 
     return Promise.all(filteredUsers.map((item) => serializeUser(item)));
   })
-  .get("/api/users/:id", async ({ params, set }) => {
+  .get("/api/users/:id", async ({ params, headers, set }) => {
     const user = await getUserById(params.id);
     if (!user) {
       set.status = 404;
       return { message: "User not found" };
     }
-    return await serializeUser(user);
+    const auth = await getAuthSession(headers as Record<string, string | undefined>);
+    return await serializeUser(user, auth?.user.id);
   })
   .get("/api/users/:id/posts", async ({ params, headers }) => {
     const auth = await getAuthSession(headers as Record<string, string | undefined>);
@@ -1011,6 +1278,67 @@ const app = new Elysia()
       orderBy: "recent",
       viewerId: auth?.user.id,
     });
+  })
+  .get("/api/search", async ({ query, headers }) => {
+    const q = typeof query.q === "string" ? query.q.trim().toLowerCase() : "";
+    const limit = ensurePositiveInt(typeof query.limit === "string" ? query.limit : undefined, 6);
+    const auth = await getAuthSession(headers as Record<string, string | undefined>);
+
+    if (!q) {
+      return {
+        users: [],
+        companies: [],
+        posts: [],
+      };
+    }
+
+    const [users, companies, posts] = await Promise.all([
+      db.select().from(usersTable).orderBy(desc(usersTable.createdAt)).limit(limit * 6),
+      getCompanyList(),
+      fetchPosts({ orderBy: "trending", limit: 120, viewerId: auth?.user.id }),
+    ]);
+
+    const matchedUsers = users
+      .filter((user) => {
+        const interests = user.fieldsOfInterest.join(" ").toLowerCase();
+        return (
+          user.anonAlias.toLowerCase().includes(q) ||
+          (user.realName ?? "").toLowerCase().includes(q) ||
+          user.university.toLowerCase().includes(q) ||
+          interests.includes(q)
+        );
+      })
+      .slice(0, limit);
+
+    const userResults = await Promise.all(matchedUsers.map((user) => serializeUser(user, auth?.user.id)));
+
+    const companyResults = companies
+      .filter((company) => {
+        return (
+          company.name.toLowerCase().includes(q) ||
+          company.industry.toLowerCase().includes(q) ||
+          company.tags.some((tag) => tag.toLowerCase().includes(q))
+        );
+      })
+      .slice(0, limit);
+
+    const postResults = posts
+      .filter((post) => {
+        return (
+          post.title.toLowerCase().includes(q) ||
+          post.content.toLowerCase().includes(q) ||
+          (post.companyName ?? "").toLowerCase().includes(q) ||
+          post.authorAlias.toLowerCase().includes(q) ||
+          post.tags.some((tag) => tag.toLowerCase().includes(q))
+        );
+      })
+      .slice(0, limit);
+
+    return {
+      users: userResults,
+      companies: companyResults,
+      posts: postResults,
+    };
   })
   .post("/api/users/:id/connect", async ({ params, headers, set }) => {
     const auth = await getAuthSession(headers as Record<string, string | undefined>);
@@ -1105,8 +1433,15 @@ const app = new Elysia()
   })
   .get("/api/posts", async ({ query, headers }) => {
     const filter = typeof query.filter === "string" ? query.filter : undefined;
+    const sortRaw = typeof query.sort === "string" ? query.sort : "recent";
+    const orderBy =
+      sortRaw === "trending" || sortRaw === "upvoted"
+        ? "trending"
+        : sortRaw === "discussed"
+          ? "discussed"
+          : "recent";
     const auth = await getAuthSession(headers as Record<string, string | undefined>);
-    return fetchPosts({ filter, orderBy: "recent", viewerId: auth?.user.id });
+    return fetchPosts({ filter, orderBy, viewerId: auth?.user.id });
   })
   .post("/api/posts", async ({ body, headers, set }) => {
     const auth = await getAuthSession(headers as Record<string, string | undefined>);
@@ -1168,10 +1503,14 @@ const app = new Elysia()
       tags: Array.isArray(payload.tags) ? payload.tags.map((tag) => tag.trim()).filter(Boolean) : [],
       upvotes: 0,
       commentCount: 0,
-      isAnonymous: true,
+      isAnonymous: normalizeVisibilityLevel(auth.user.visibilityLevel) !== "realName",
       createdAt: now,
       updatedAt: now,
     });
+
+    if (companyId) {
+      await ensureUserCompanyConnection(auth.user.id, companyId);
+    }
 
     await db
       .update(usersTable)
@@ -1189,11 +1528,24 @@ const app = new Elysia()
           .limit(1)
       : [];
 
+    const authorPresentation = getUserVisibilityPresentation({
+      anonAlias: auth.user.anonAlias,
+      realName: auth.user.realName,
+      visibilityLevel: auth.user.visibilityLevel,
+      university: auth.user.university,
+      graduationYear: auth.user.graduationYear,
+      fieldsOfInterest: auth.user.fieldsOfInterest,
+    });
+
     return {
       id,
       authorId: auth.user.id,
-      authorAlias: auth.user.anonAlias,
+      authorAlias: authorPresentation.displayName,
       authorAvatarSeed: auth.user.anonAvatarSeed,
+      authorVisibilityLevel: authorPresentation.visibilityLevel,
+      authorRole: authorPresentation.role,
+      authorSchool: authorPresentation.school,
+      authorGraduationYear: authorPresentation.graduationYear,
       category: payload.category ?? "question",
       title,
       content,
@@ -1202,7 +1554,7 @@ const app = new Elysia()
       tags: Array.isArray(payload.tags) ? payload.tags.map((tag) => tag.trim()).filter(Boolean) : [],
       upvotes: 0,
       commentCount: 0,
-      isAnonymous: true,
+      isAnonymous: authorPresentation.isAnonymous,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
       userVote: 0,
@@ -1243,13 +1595,156 @@ const app = new Elysia()
     }
     return result;
   })
-  .get("/api/posts/:id/comments", async ({ params }) => {
+  .patch("/api/posts/:id", async ({ params, body, headers, set }) => {
+    const auth = await getAuthSession(headers as Record<string, string | undefined>);
+    if (!auth) {
+      set.status = 401;
+      return { message: "Unauthorized" };
+    }
+
+    const [existingPost] = await db
+      .select()
+      .from(postsTable)
+      .where(eq(postsTable.id, params.id))
+      .limit(1);
+
+    if (!existingPost) {
+      set.status = 404;
+      return { message: "Post not found" };
+    }
+
+    if (existingPost.authorId !== auth.user.id) {
+      set.status = 403;
+      return { message: "You can only edit your own posts" };
+    }
+
+    const payload = body as {
+      title?: string;
+      content?: string;
+      category?: string;
+      tags?: string[];
+      companyId?: string | null;
+      companyName?: string;
+    };
+
+    const title = payload.title?.trim() ?? existingPost.title;
+    const content = payload.content?.trim() ?? existingPost.content;
+    if (!title || !content) {
+      set.status = 400;
+      return { message: "Title and content are required" };
+    }
+
+    const nextTags = Array.isArray(payload.tags)
+      ? payload.tags.map((tag) => tag.trim()).filter(Boolean)
+      : existingPost.tags;
+
+    const moderationViolation = findModerationViolation([
+      { label: "title", value: title },
+      { label: "content", value: content },
+      ...nextTags.map((tag) => ({ label: "tag", value: tag })),
+    ]);
+    if (moderationViolation) {
+      set.status = 400;
+      return { message: moderationMessage(moderationViolation.field) };
+    }
+
+    let companyId: string | undefined;
+    if (payload.companyId === null) {
+      companyId = undefined;
+    } else if (typeof payload.companyId === "string" && payload.companyId.trim()) {
+      companyId = await resolveCompanyId(undefined, payload.companyId.trim());
+      if (!companyId) {
+        set.status = 400;
+        return { message: "Invalid companyId" };
+      }
+    } else if (typeof payload.companyName === "string" && payload.companyName.trim()) {
+      companyId = await resolveCompanyId(payload.companyName.trim(), undefined);
+      if (!companyId) {
+        set.status = 400;
+        return { message: "Company name not found" };
+      }
+    } else {
+      companyId = existingPost.companyId ?? undefined;
+    }
+
+    await db
+      .update(postsTable)
+      .set({
+        title,
+        content,
+        category: payload.category ?? existingPost.category,
+        tags: nextTags,
+        companyId: companyId ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(postsTable.id, params.id));
+
+    if (companyId) {
+      await ensureUserCompanyConnection(auth.user.id, companyId);
+    }
+
+    const [post] = await fetchPosts({
+      where: eq(postsTable.id, params.id),
+      viewerId: auth.user.id,
+      limit: 1,
+    });
+
+    if (!post) {
+      set.status = 404;
+      return { message: "Post not found after update" };
+    }
+
+    return post;
+  })
+  .delete("/api/posts/:id", async ({ params, headers, set }) => {
+    const auth = await getAuthSession(headers as Record<string, string | undefined>);
+    if (!auth) {
+      set.status = 401;
+      return { message: "Unauthorized" };
+    }
+
+    const [existingPost] = await db
+      .select({ id: postsTable.id, authorId: postsTable.authorId })
+      .from(postsTable)
+      .where(eq(postsTable.id, params.id))
+      .limit(1);
+
+    if (!existingPost) {
+      set.status = 404;
+      return { message: "Post not found" };
+    }
+
+    if (existingPost.authorId !== auth.user.id) {
+      set.status = 403;
+      return { message: "You can only delete your own posts" };
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.delete(postsTable).where(eq(postsTable.id, params.id));
+      await tx
+        .update(usersTable)
+        .set({
+          postsCreated: sql`greatest(${usersTable.postsCreated} - 1, 0)`,
+          contributionScore: sql`greatest(${usersTable.contributionScore} - 2, 0)`,
+        })
+        .where(eq(usersTable.id, auth.user.id));
+    });
+
+    return { ok: true };
+  })
+  .get("/api/posts/:id/comments", async ({ params, headers }) => {
+    const auth = await getAuthSession(headers as Record<string, string | undefined>);
     const rows = await db
       .select({
         id: commentsTable.id,
         postId: commentsTable.postId,
         authorId: commentsTable.authorId,
-        authorAlias: usersTable.anonAlias,
+        authorAnonAlias: usersTable.anonAlias,
+        authorRealName: usersTable.realName,
+        authorVisibilityLevel: usersTable.visibilityLevel,
+        authorUniversity: usersTable.university,
+        authorGraduationYear: usersTable.graduationYear,
+        authorFieldsOfInterest: usersTable.fieldsOfInterest,
         content: commentsTable.content,
         upvotes: commentsTable.upvotes,
         isAnonymous: commentsTable.isAnonymous,
@@ -1261,18 +1756,55 @@ const app = new Elysia()
       .where(eq(commentsTable.postId, params.id))
       .orderBy(asc(commentsTable.createdAt));
 
+    const commentIds = rows.map((row) => row.id);
+    let voteByCommentId = new Map<string, PostVoteValue>();
+    if (auth?.user.id && commentIds.length > 0) {
+      const votes = await db
+        .select({
+          commentId: commentVotesTable.commentId,
+          value: commentVotesTable.value,
+        })
+        .from(commentVotesTable)
+        .where(
+          and(
+            eq(commentVotesTable.userId, auth.user.id),
+            inArray(commentVotesTable.commentId, commentIds)
+          )
+        );
+
+      voteByCommentId = new Map(
+        votes.map((vote) => [vote.commentId, parseVoteValue(vote.value) ?? 0] satisfies [string, PostVoteValue])
+      );
+    }
+
     return buildCommentsTree(
-      rows.map((row) => ({
-        id: row.id,
-        postId: row.postId,
-        authorId: row.authorId,
-        authorAlias: row.authorAlias,
-        content: row.content,
-        upvotes: row.upvotes,
-        isAnonymous: row.isAnonymous,
-        createdAt: toIso(row.createdAt),
-        parentCommentId: row.parentCommentId,
-      }))
+      rows.map((row) => {
+        const visibleAuthor = getUserVisibilityPresentation({
+          anonAlias: row.authorAnonAlias,
+          realName: row.authorRealName,
+          visibilityLevel: row.authorVisibilityLevel,
+          university: row.authorUniversity,
+          graduationYear: row.authorGraduationYear,
+          fieldsOfInterest: row.authorFieldsOfInterest,
+        });
+
+        return {
+          id: row.id,
+          postId: row.postId,
+          authorId: row.authorId,
+          authorAlias: visibleAuthor.displayName,
+          authorVisibilityLevel: visibleAuthor.visibilityLevel,
+          authorRole: visibleAuthor.role,
+          authorSchool: visibleAuthor.school,
+          authorGraduationYear: visibleAuthor.graduationYear,
+          content: row.content,
+          upvotes: row.upvotes,
+          userVote: voteByCommentId.get(row.id) ?? 0,
+          isAnonymous: visibleAuthor.isAnonymous,
+          createdAt: toIso(row.createdAt),
+          parentCommentId: row.parentCommentId,
+        };
+      })
     );
   })
   .post("/api/posts/:id/comments", async ({ params, body, headers, set }) => {
@@ -1331,7 +1863,7 @@ const app = new Elysia()
       parentCommentId: payload.parentCommentId,
       content,
       upvotes: 0,
-      isAnonymous: true,
+      isAnonymous: normalizeVisibilityLevel(auth.user.visibilityLevel) !== "realName",
       createdAt,
     });
 
@@ -1343,14 +1875,28 @@ const app = new Elysia()
       })
       .where(eq(postsTable.id, params.id));
 
+    const authorPresentation = getUserVisibilityPresentation({
+      anonAlias: auth.user.anonAlias,
+      realName: auth.user.realName,
+      visibilityLevel: auth.user.visibilityLevel,
+      university: auth.user.university,
+      graduationYear: auth.user.graduationYear,
+      fieldsOfInterest: auth.user.fieldsOfInterest,
+    });
+
     return {
       id,
       postId: params.id,
       authorId: auth.user.id,
-      authorAlias: auth.user.anonAlias,
+      authorAlias: authorPresentation.displayName,
+      authorVisibilityLevel: authorPresentation.visibilityLevel,
+      authorRole: authorPresentation.role,
+      authorSchool: authorPresentation.school,
+      authorGraduationYear: authorPresentation.graduationYear,
       content,
       upvotes: 0,
-      isAnonymous: true,
+      userVote: 0,
+      isAnonymous: authorPresentation.isAnonymous,
       createdAt: createdAt.toISOString(),
     } satisfies CommentResponse;
   })
@@ -1375,6 +1921,120 @@ const app = new Elysia()
     }
     return result;
   })
+  .patch("/api/comments/:id", async ({ params, body, headers, set }) => {
+    const auth = await getAuthSession(headers as Record<string, string | undefined>);
+    if (!auth) {
+      set.status = 401;
+      return { message: "Unauthorized" };
+    }
+
+    const [comment] = await db
+      .select()
+      .from(commentsTable)
+      .where(eq(commentsTable.id, params.id))
+      .limit(1);
+
+    if (!comment) {
+      set.status = 404;
+      return { message: "Comment not found" };
+    }
+
+    if (comment.authorId !== auth.user.id) {
+      set.status = 403;
+      return { message: "You can only edit your own comments" };
+    }
+
+    const payload = body as { content?: string };
+    const content = payload.content?.trim();
+    if (!content) {
+      set.status = 400;
+      return { message: "Comment content is required" };
+    }
+
+    const moderationViolation = findModerationViolation([{ label: "comment", value: content }]);
+    if (moderationViolation) {
+      set.status = 400;
+      return { message: moderationMessage(moderationViolation.field) };
+    }
+
+    const [updated] = await db
+      .update(commentsTable)
+      .set({ content })
+      .where(eq(commentsTable.id, params.id))
+      .returning();
+
+    if (!updated) {
+      set.status = 404;
+      return { message: "Comment not found after update" };
+    }
+
+    const authorPresentation = getUserVisibilityPresentation({
+      anonAlias: auth.user.anonAlias,
+      realName: auth.user.realName,
+      visibilityLevel: auth.user.visibilityLevel,
+      university: auth.user.university,
+      graduationYear: auth.user.graduationYear,
+      fieldsOfInterest: auth.user.fieldsOfInterest,
+    });
+
+    return {
+      id: updated.id,
+      postId: updated.postId,
+      authorId: updated.authorId,
+      authorAlias: authorPresentation.displayName,
+      authorVisibilityLevel: authorPresentation.visibilityLevel,
+      authorRole: authorPresentation.role,
+      authorSchool: authorPresentation.school,
+      authorGraduationYear: authorPresentation.graduationYear,
+      content: updated.content,
+      upvotes: updated.upvotes,
+      userVote: 0,
+      isAnonymous: authorPresentation.isAnonymous,
+      createdAt: toIso(updated.createdAt),
+    } satisfies CommentResponse;
+  })
+  .delete("/api/comments/:id", async ({ params, headers, set }) => {
+    const auth = await getAuthSession(headers as Record<string, string | undefined>);
+    if (!auth) {
+      set.status = 401;
+      return { message: "Unauthorized" };
+    }
+
+    const [comment] = await db
+      .select({
+        id: commentsTable.id,
+        authorId: commentsTable.authorId,
+        postId: commentsTable.postId,
+      })
+      .from(commentsTable)
+      .where(eq(commentsTable.id, params.id))
+      .limit(1);
+
+    if (!comment) {
+      set.status = 404;
+      return { message: "Comment not found" };
+    }
+
+    if (comment.authorId !== auth.user.id) {
+      set.status = 403;
+      return { message: "You can only delete your own comments" };
+    }
+
+    const removedCount = await countCommentSubtree(comment.id);
+
+    await db.transaction(async (tx) => {
+      await tx.delete(commentsTable).where(eq(commentsTable.id, comment.id));
+      await tx
+        .update(postsTable)
+        .set({
+          commentCount: sql`greatest(${postsTable.commentCount} - ${removedCount}, 0)`,
+          updatedAt: new Date(),
+        })
+        .where(eq(postsTable.id, comment.postId));
+    });
+
+    return { ok: true, removedCount };
+  })
   .get("/api/graph", async ({ query }) => {
     const industry = typeof query.industry === "string" ? query.industry.toLowerCase() : undefined;
     const university = typeof query.university === "string" ? query.university.toLowerCase() : undefined;
@@ -1382,6 +2042,13 @@ const app = new Elysia()
     const users = await db.select().from(usersTable);
     const companies = await db.select().from(companiesTable);
     const connections = await db.select().from(connectionsTable);
+    const postCompanyLinks = await db
+      .select({
+        authorId: postsTable.authorId,
+        companyId: postsTable.companyId,
+      })
+      .from(postsTable)
+      .where(isNotNull(postsTable.companyId));
 
     const filteredCompanies = industry
       ? companies.filter((company) => company.industry.toLowerCase().includes(industry))
@@ -1392,20 +2059,28 @@ const app = new Elysia()
       : users;
 
     const nodes = [
-      ...filteredCompanies.map((company) => ({
-        id: company.id,
-        type: "company" as const,
-        label: company.name,
-        size: Math.max(4, Math.round(company.totalReviews / 6)),
-        group: "company",
-      })),
-      ...filteredUsers.map((user) => ({
-        id: user.id,
-        type: "user" as const,
-        label: user.anonAlias,
-        size: Math.max(2, Math.round(user.contributionScore / 20)),
-        group: "user",
-      })),
+      ...filteredCompanies.map((company) => {
+        const sector = classifySectorFromText(
+          [company.industry, company.name, ...(company.tags ?? [])].join(" ")
+        );
+        return {
+          id: company.id,
+          type: "company" as const,
+          label: company.name,
+          size: Math.max(4, Math.round(company.totalReviews / 6)),
+          group: sector,
+        };
+      }),
+      ...filteredUsers.map((user) => {
+        const sector = classifySectorFromText(user.fieldsOfInterest.join(" "));
+        return {
+          id: user.id,
+          type: "user" as const,
+          label: user.anonAlias,
+          size: Math.max(2, Math.round(user.contributionScore / 20)),
+          group: sector,
+        };
+      }),
     ];
 
     const nodeIdSet = new Set(nodes.map((node) => node.id));
@@ -1430,9 +2105,37 @@ const app = new Elysia()
         });
       });
 
-    const edges = [...edgesByPair.values()];
+    postCompanyLinks
+      .filter((edge) => edge.companyId && nodeIdSet.has(edge.authorId) && nodeIdSet.has(edge.companyId))
+      .forEach((edge) => {
+        if (!edge.companyId) return;
+        const sorted = [edge.authorId, edge.companyId].sort();
+        const left = sorted[0] ?? edge.authorId;
+        const right = sorted[1] ?? edge.companyId;
+        const key = `${left}:${right}`;
+        const existing = edgesByPair.get(key);
+        if (existing) {
+          existing.weight = Math.min(existing.weight + 1, 10);
+          return;
+        }
 
-    return { nodes, edges };
+        edgesByPair.set(key, {
+          source: left,
+          target: right,
+          weight: 1,
+        });
+      });
+
+    const edges = [...edgesByPair.values()];
+    const connectedNodeIds = new Set<string>();
+    for (const edge of edges) {
+      connectedNodeIds.add(edge.source);
+      connectedNodeIds.add(edge.target);
+    }
+
+    const connectedNodes = nodes.filter((node) => connectedNodeIds.has(node.id));
+
+    return { nodes: connectedNodes, edges };
   })
   .post("/api/conversations/direct", async ({ body, headers, set }) => {
     const auth = await getAuthSession(headers as Record<string, string | undefined>);
@@ -1533,7 +2236,13 @@ const app = new Elysia()
     if (conversationIds.length === 0) return [];
 
     const conversations = await db
-      .select()
+      .select({
+        id: conversationsTable.id,
+        updatedAt: conversationsTable.updatedAt,
+        isIdentityMutuallyRevealed: conversationsTable.isIdentityMutuallyRevealed,
+        identityRevealRequestedBy: conversationsTable.identityRevealRequestedBy,
+        identityRevealRequestedAt: conversationsTable.identityRevealRequestedAt,
+      })
       .from(conversationsTable)
       .where(inArray(conversationsTable.id, conversationIds))
       .orderBy(desc(conversationsTable.updatedAt));
@@ -1542,7 +2251,12 @@ const app = new Elysia()
       .select({
         conversationId: conversationParticipantsTable.conversationId,
         userId: conversationParticipantsTable.userId,
-        alias: usersTable.anonAlias,
+        anonAlias: usersTable.anonAlias,
+        realName: usersTable.realName,
+        visibilityLevel: usersTable.visibilityLevel,
+        university: usersTable.university,
+        graduationYear: usersTable.graduationYear,
+        fieldsOfInterest: usersTable.fieldsOfInterest,
         isAnonymous: conversationParticipantsTable.isAnonymous,
         isIdentityRevealed: conversationParticipantsTable.isIdentityRevealed,
       })
@@ -1555,8 +2269,10 @@ const app = new Elysia()
         id: messagesTable.id,
         conversationId: messagesTable.conversationId,
         senderId: messagesTable.senderId,
-        senderAlias: usersTable.anonAlias,
+        senderAnonAlias: usersTable.anonAlias,
+        senderRealName: usersTable.realName,
         content: messagesTable.content,
+        kind: messagesTable.kind,
         createdAt: messagesTable.createdAt,
       })
       .from(messagesTable)
@@ -1569,7 +2285,12 @@ const app = new Elysia()
         string,
         Array<{
           userId: string;
-          alias: string;
+          anonAlias: string;
+          realName: string | null;
+          visibilityLevel: string;
+          university: string;
+          graduationYear: number;
+          fieldsOfInterest: string[];
           isAnonymous: boolean;
           isIdentityRevealed: boolean;
         }>
@@ -1578,7 +2299,12 @@ const app = new Elysia()
       const current = acc[row.conversationId] ?? [];
       current.push({
         userId: row.userId,
-        alias: row.alias,
+        anonAlias: row.anonAlias,
+        realName: row.realName,
+        visibilityLevel: row.visibilityLevel,
+        university: row.university,
+        graduationYear: row.graduationYear,
+        fieldsOfInterest: row.fieldsOfInterest,
         isAnonymous: row.isAnonymous,
         isIdentityRevealed: row.isIdentityRevealed,
       });
@@ -1593,24 +2319,56 @@ const app = new Elysia()
       }
     }
 
-    return conversations.map((conversation) => {
+    return Promise.all(conversations.map(async (conversation) => {
+      const participantsForConversation = participantsByConversation[conversation.id] ?? [];
+      const identity = await getConversationIdentity(conversation, auth.user.id);
+
+      const serializedParticipants = participantsForConversation.map((participant) => {
+        const visible = getUserVisibilityPresentation({
+          anonAlias: participant.anonAlias,
+          realName: participant.realName,
+          visibilityLevel: participant.visibilityLevel,
+          university: participant.university,
+          graduationYear: participant.graduationYear,
+          fieldsOfInterest: participant.fieldsOfInterest,
+        });
+
+        const alias = conversation.isIdentityMutuallyRevealed
+          ? participant.realName?.trim() || participant.anonAlias
+          : participant.anonAlias;
+
+        return {
+          userId: participant.userId,
+          alias,
+          isAnonymous: !conversation.isIdentityMutuallyRevealed,
+          isIdentityRevealed: conversation.isIdentityMutuallyRevealed,
+          role: conversation.isIdentityMutuallyRevealed ? visible.role : undefined,
+          school: conversation.isIdentityMutuallyRevealed ? visible.school : undefined,
+          graduationYear: conversation.isIdentityMutuallyRevealed ? visible.graduationYear : undefined,
+        };
+      });
+
       const lastMessage = latestMessageByConversation.get(conversation.id);
       return {
         id: conversation.id,
-        participants: participantsByConversation[conversation.id] ?? [],
+        participants: serializedParticipants,
         lastMessage: lastMessage
           ? {
               id: lastMessage.id,
               conversationId: lastMessage.conversationId,
               senderId: lastMessage.senderId,
-              senderAlias: lastMessage.senderAlias,
+              senderAlias: conversation.isIdentityMutuallyRevealed
+                ? (lastMessage.senderRealName?.trim() || lastMessage.senderAnonAlias)
+                : lastMessage.senderAnonAlias,
               content: lastMessage.content,
+              kind: normalizeMessageKind(lastMessage.kind),
               createdAt: toIso(lastMessage.createdAt),
             }
           : undefined,
+        identity,
         updatedAt: toIso(conversation.updatedAt),
       };
-    });
+    }));
   })
   .get("/api/conversations/:id/messages", async ({ params, headers, set }) => {
     const auth = await getAuthSession(headers as Record<string, string | undefined>);
@@ -1635,13 +2393,29 @@ const app = new Elysia()
       return { message: "Not allowed to view this conversation" };
     }
 
+    const [conversation] = await db
+      .select({
+        id: conversationsTable.id,
+        isIdentityMutuallyRevealed: conversationsTable.isIdentityMutuallyRevealed,
+      })
+      .from(conversationsTable)
+      .where(eq(conversationsTable.id, params.id))
+      .limit(1);
+
+    if (!conversation) {
+      set.status = 404;
+      return { message: "Conversation not found" };
+    }
+
     const rows = await db
       .select({
         id: messagesTable.id,
         conversationId: messagesTable.conversationId,
         senderId: messagesTable.senderId,
-        senderAlias: usersTable.anonAlias,
+        senderAnonAlias: usersTable.anonAlias,
+        senderRealName: usersTable.realName,
         content: messagesTable.content,
+        kind: messagesTable.kind,
         createdAt: messagesTable.createdAt,
       })
       .from(messagesTable)
@@ -1653,10 +2427,213 @@ const app = new Elysia()
       id: row.id,
       conversationId: row.conversationId,
       senderId: row.senderId,
-      senderAlias: row.senderAlias,
+      senderAlias: conversation.isIdentityMutuallyRevealed
+        ? (row.senderRealName?.trim() || row.senderAnonAlias)
+        : row.senderAnonAlias,
       content: row.content,
+      kind: normalizeMessageKind(row.kind),
       createdAt: toIso(row.createdAt),
     }));
+  })
+  .post("/api/conversations/:id/identity/request", async ({ params, headers, set }) => {
+    const auth = await getAuthSession(headers as Record<string, string | undefined>);
+    if (!auth) {
+      set.status = 401;
+      return { message: "Unauthorized" };
+    }
+
+    const [participant] = await db
+      .select({ userId: conversationParticipantsTable.userId })
+      .from(conversationParticipantsTable)
+      .where(
+        and(
+          eq(conversationParticipantsTable.conversationId, params.id),
+          eq(conversationParticipantsTable.userId, auth.user.id)
+        )
+      )
+      .limit(1);
+
+    if (!participant) {
+      set.status = 403;
+      return { message: "Sender is not a participant in this conversation" };
+    }
+
+    const [conversation] = await db
+      .select({
+        id: conversationsTable.id,
+        isIdentityMutuallyRevealed: conversationsTable.isIdentityMutuallyRevealed,
+        identityRevealRequestedBy: conversationsTable.identityRevealRequestedBy,
+        identityRevealRequestedAt: conversationsTable.identityRevealRequestedAt,
+      })
+      .from(conversationsTable)
+      .where(eq(conversationsTable.id, params.id))
+      .limit(1);
+
+    if (!conversation) {
+      set.status = 404;
+      return { message: "Conversation not found" };
+    }
+
+    if (conversation.isIdentityMutuallyRevealed) {
+      return { ok: true, identity: { isRevealed: true } };
+    }
+
+    if (conversation.identityRevealRequestedBy && conversation.identityRevealRequestedBy !== auth.user.id) {
+      return {
+        ok: true,
+        identity: await getConversationIdentity(conversation, auth.user.id),
+      };
+    }
+
+    const now = new Date();
+    await db
+      .update(conversationsTable)
+      .set({
+        identityRevealRequestedBy: auth.user.id,
+        identityRevealRequestedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(conversationsTable.id, params.id));
+
+    const id = `m-${crypto.randomUUID()}`;
+    await db.insert(messagesTable).values({
+      id,
+      conversationId: params.id,
+      senderId: auth.user.id,
+      kind: "identity-request",
+      content: "Identity reveal requested.",
+      createdAt: now,
+    });
+
+    const updatedConversation = {
+      ...conversation,
+      identityRevealRequestedBy: auth.user.id,
+      identityRevealRequestedAt: now,
+    };
+
+    return {
+      ok: true,
+      identity: await getConversationIdentity(updatedConversation, auth.user.id),
+    };
+  })
+  .post("/api/conversations/:id/identity/respond", async ({ params, body, headers, set }) => {
+    const auth = await getAuthSession(headers as Record<string, string | undefined>);
+    if (!auth) {
+      set.status = 401;
+      return { message: "Unauthorized" };
+    }
+
+    const payload = body as { accept?: boolean };
+
+    const [participant] = await db
+      .select({ userId: conversationParticipantsTable.userId })
+      .from(conversationParticipantsTable)
+      .where(
+        and(
+          eq(conversationParticipantsTable.conversationId, params.id),
+          eq(conversationParticipantsTable.userId, auth.user.id)
+        )
+      )
+      .limit(1);
+
+    if (!participant) {
+      set.status = 403;
+      return { message: "Sender is not a participant in this conversation" };
+    }
+
+    const [conversation] = await db
+      .select({
+        id: conversationsTable.id,
+        isIdentityMutuallyRevealed: conversationsTable.isIdentityMutuallyRevealed,
+        identityRevealRequestedBy: conversationsTable.identityRevealRequestedBy,
+        identityRevealRequestedAt: conversationsTable.identityRevealRequestedAt,
+      })
+      .from(conversationsTable)
+      .where(eq(conversationsTable.id, params.id))
+      .limit(1);
+
+    if (!conversation) {
+      set.status = 404;
+      return { message: "Conversation not found" };
+    }
+
+    if (!conversation.identityRevealRequestedBy || !conversation.identityRevealRequestedAt) {
+      set.status = 400;
+      return { message: "No pending identity reveal request" };
+    }
+
+    if (conversation.identityRevealRequestedBy === auth.user.id) {
+      set.status = 400;
+      return { message: "Cannot respond to your own identity request" };
+    }
+
+    const accept = payload.accept === true;
+    const now = new Date();
+
+    if (accept) {
+      await db.transaction(async (tx) => {
+        await tx
+          .update(conversationsTable)
+          .set({
+            isIdentityMutuallyRevealed: true,
+            identityRevealRequestedBy: null,
+            identityRevealRequestedAt: null,
+            updatedAt: now,
+          })
+          .where(eq(conversationsTable.id, params.id));
+
+        await tx
+          .update(conversationParticipantsTable)
+          .set({
+            isAnonymous: false,
+            isIdentityRevealed: true,
+          })
+          .where(eq(conversationParticipantsTable.conversationId, params.id));
+
+        await tx.insert(messagesTable).values({
+          id: `m-${crypto.randomUUID()}`,
+          conversationId: params.id,
+          senderId: auth.user.id,
+          kind: "identity-accepted",
+          content: "Identity reveal accepted.",
+          createdAt: now,
+        });
+      });
+
+      return {
+        ok: true,
+        identity: {
+          isRevealed: true,
+        } satisfies ConversationIdentityResponse,
+      };
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(conversationsTable)
+        .set({
+          identityRevealRequestedBy: null,
+          identityRevealRequestedAt: null,
+          updatedAt: now,
+        })
+        .where(eq(conversationsTable.id, params.id));
+
+      await tx.insert(messagesTable).values({
+        id: `m-${crypto.randomUUID()}`,
+        conversationId: params.id,
+        senderId: auth.user.id,
+        kind: "identity-declined",
+        content: "Identity reveal request declined.",
+        createdAt: now,
+      });
+    });
+
+    return {
+      ok: true,
+      identity: {
+        isRevealed: false,
+      } satisfies ConversationIdentityResponse,
+    };
   })
   .post("/api/conversations/:id/messages", async ({ params, body, headers, set }) => {
     const auth = await getAuthSession(headers as Record<string, string | undefined>);
@@ -1694,6 +2671,20 @@ const app = new Elysia()
       return { message: "Sender is not a participant in this conversation" };
     }
 
+    const [conversation] = await db
+      .select({
+        id: conversationsTable.id,
+        isIdentityMutuallyRevealed: conversationsTable.isIdentityMutuallyRevealed,
+      })
+      .from(conversationsTable)
+      .where(eq(conversationsTable.id, params.id))
+      .limit(1);
+
+    if (!conversation) {
+      set.status = 404;
+      return { message: "Conversation not found" };
+    }
+
     const id = `m-${crypto.randomUUID()}`;
     const createdAt = new Date();
 
@@ -1701,6 +2692,7 @@ const app = new Elysia()
       id,
       conversationId: params.id,
       senderId: auth.user.id,
+      kind: "text",
       content,
       createdAt,
     });
@@ -1714,8 +2706,11 @@ const app = new Elysia()
       id,
       conversationId: params.id,
       senderId: auth.user.id,
-      senderAlias: auth.user.anonAlias,
+      senderAlias: conversation.isIdentityMutuallyRevealed
+        ? (auth.user.realName?.trim() || auth.user.anonAlias)
+        : auth.user.anonAlias,
       content,
+      kind: "text" as const,
       createdAt: createdAt.toISOString(),
     };
   })

@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Post } from "../types";
 import { agoraApi } from "../services/agoraApi";
 
-export function usePosts(filter: string = "all") {
+export function usePosts(filter: string = "all", sortBy: string = "recent") {
   return useQuery<Post[]>({
-    queryKey: ["posts", filter],
-    queryFn: () => agoraApi.getPosts(filter),
+    queryKey: ["posts", filter, sortBy],
+    queryFn: () => agoraApi.getPosts(filter, sortBy),
     placeholderData: (previousData) => previousData,
   });
 }

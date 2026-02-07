@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { Input } from "../ui/Input";
 
 const categories = [
@@ -12,6 +12,7 @@ const categories = [
 
 const sortOptions = [
   { value: "recent", label: "Most Recent" },
+  { value: "trending", label: "Trending" },
   { value: "upvoted", label: "Most Upvoted" },
   { value: "discussed", label: "Most Discussed" },
 ];
@@ -60,17 +61,23 @@ export function FilterBar({
             onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
-        <select
-          value={sortBy}
-          onChange={(e) => onSortChange(e.target.value)}
-          className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-        >
-          {sortOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative sm:w-56">
+          <select
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value)}
+            className="h-10 w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 pr-9 text-sm text-slate-700 outline-none transition-colors focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            {sortOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            size={16}
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400"
+          />
+        </div>
       </div>
     </div>
   );

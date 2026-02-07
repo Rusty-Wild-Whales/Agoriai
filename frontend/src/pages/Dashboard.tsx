@@ -83,13 +83,13 @@ function AnimatedCounter({
         />
       </div>
       <p
-        className={`font-display text-3xl font-bold ${
+        className={`font-display text-2xl font-bold ${
           accent ? "text-amber-700 dark:text-amber-400" : "text-slate-900 dark:text-white"
         }`}
       >
         {count}
       </p>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{label}</p>
     </motion.div>
   );
 }
@@ -173,7 +173,7 @@ export default function Dashboard() {
         </p>
       </section>
 
-      <section data-tutorial="dashboard-stats" className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
+      <section data-tutorial="dashboard-stats" className="grid grid-cols-2 gap-2.5 md:grid-cols-5 md:gap-3">
         <AnimatedCounter value={stats?.postsCreated ?? 0} label="Posts Created" icon={FileText} />
         <AnimatedCounter value={stats?.questionsAnswered ?? 0} label="Questions Answered" icon={MessageCircle} />
         <AnimatedCounter value={stats?.helpfulVotes ?? 0} label="Helpful Votes" icon={ThumbsUp} />
@@ -217,7 +217,7 @@ export default function Dashboard() {
             {recentPosts.map((post) => (
               <Link
                 key={post.id}
-                to="/feed"
+                to={`/feed?focus=${encodeURIComponent(post.id)}`}
                 className="flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/40"
               >
                 <div className="min-w-0 flex-1">
@@ -247,7 +247,7 @@ export default function Dashboard() {
             {trendingPosts.map((post, index) => (
               <Link
                 key={post.id}
-                to="/feed"
+                to={`/feed?sort=trending&focus=${encodeURIComponent(post.id)}`}
                 className="flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/40"
               >
                 <span

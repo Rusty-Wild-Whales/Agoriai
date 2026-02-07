@@ -8,7 +8,7 @@ import { useUIStore } from "./stores/uiStore";
 import { TutorialProvider } from "./components/tutorial/TutorialProvider";
 import { agoraApi } from "./services/agoraApi";
 
-const Landing = lazy(() => import("./pages/Landing"));
+import Landing from "./pages/Landing";
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Feed = lazy(() => import("./pages/Feed"));

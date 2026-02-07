@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Compass, ListFilter } from "lucide-react";
+import { ListFilter } from "lucide-react";
 import { FilterBar } from "../components/feed/FilterBar";
 import { PostComposer } from "../components/feed/PostComposer";
 import { PostCard } from "../components/feed/PostCard";
@@ -11,16 +11,22 @@ import type { PostCategory } from "../types";
 export default function Feed() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("recent");
+  const [sortBy, setSortBy] = useState(searchParams.get("sort") ?? "recent");
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") ?? "");
+  const focusedPostId = searchParams.get("focus");
 
-  const { data: posts, isLoading } = usePosts(filter);
+  const { data: posts, isLoading } = usePosts(filter, sortBy);
   const createMutation = useCreatePost();
   const urlSearchQuery = searchParams.get("q") ?? "";
+  const urlSortBy = searchParams.get("sort") ?? "recent";
 
   useEffect(() => {
     setSearchQuery(urlSearchQuery);
   }, [urlSearchQuery]);
+
+  useEffect(() => {
+    setSortBy(urlSortBy);
+  }, [urlSortBy]);
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
@@ -30,6 +36,14 @@ export default function Feed() {
     } else {
       nextParams.delete("q");
     }
+    nextParams.set("sort", sortBy);
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const handleSortChange = (nextSort: string) => {
+    setSortBy(nextSort);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("sort", nextSort);
     setSearchParams(nextParams, { replace: true });
   };
 
@@ -49,18 +63,15 @@ export default function Feed() {
         })
       : posts;
 
-    const result = [...filtered];
+    return filtered;
+  }, [posts, searchQuery]);
 
-    if (sortBy === "upvoted") {
-      result.sort((a, b) => b.upvotes - a.upvotes);
-    } else if (sortBy === "discussed") {
-      result.sort((a, b) => b.commentCount - a.commentCount);
-    } else {
-      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }
-
-    return result;
-  }, [posts, searchQuery, sortBy]);
+  useEffect(() => {
+    if (!focusedPostId) return;
+    const element = document.getElementById(`post-${focusedPostId}`);
+    if (!element) return;
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusedPostId, filteredPosts]);
 
   const handleCreatePost = async (post: {
     title: string;
@@ -74,20 +85,6 @@ export default function Feed() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <section className="mosaic-surface-strong rounded-2xl p-4 md:p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-display text-2xl font-semibold text-slate-900 dark:text-white">Community Feed</h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Share practical experiences and discover what works for others.
-            </p>
-          </div>
-          <div className="hidden rounded-lg bg-slate-100 p-2 dark:bg-slate-700/40 md:block">
-            <Compass size={18} className="text-slate-600 dark:text-slate-300" />
-          </div>
-        </div>
-      </section>
-
       <div data-tutorial="feed-composer">
         <PostComposer onSubmit={handleCreatePost} />
       </div>
@@ -101,7 +98,7 @@ export default function Feed() {
           activeFilter={filter}
           onFilterChange={setFilter}
           sortBy={sortBy}
-          onSortChange={setSortBy}
+          onSortChange={handleSortChange}
           searchQuery={searchQuery}
           onSearchChange={handleSearchChange}
         />
@@ -119,7 +116,7 @@ export default function Feed() {
           </div>
         ) : (
           filteredPosts.map((post) => (
-            <PostCard key={post.id} post={post} />
+            <PostCard key={post.id} post={post} highlighted={Boolean(focusedPostId && focusedPostId === post.id)} />
           ))
         )}
       </section>

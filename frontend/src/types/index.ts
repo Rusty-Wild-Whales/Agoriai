@@ -7,6 +7,7 @@ export interface User {
   realName?: string;
   university: string;
   graduationYear: number;
+  visibilityLevel: "anonymous" | "role" | "school" | "realName";
   fieldsOfInterest: string[];
   isAnonymous: boolean;
   createdAt: string;
@@ -35,6 +36,10 @@ export interface Post {
   authorId: string;
   authorAlias: string;
   authorAvatarSeed: string;
+  authorVisibilityLevel: "anonymous" | "role" | "school" | "realName";
+  authorRole?: string;
+  authorSchool?: string;
+  authorGraduationYear?: number;
   category: PostCategory;
   title: string;
   content: string;
@@ -54,8 +59,13 @@ export interface Comment {
   postId: string;
   authorId: string;
   authorAlias: string;
+  authorVisibilityLevel: "anonymous" | "role" | "school" | "realName";
+  authorRole?: string;
+  authorSchool?: string;
+  authorGraduationYear?: number;
   content: string;
   upvotes: number;
+  userVote?: -1 | 0 | 1;
   isAnonymous: boolean;
   createdAt: string;
   replies?: Comment[];
@@ -136,6 +146,7 @@ export interface Conversation {
   id: string;
   participants: ConversationParticipant[];
   lastMessage?: Message;
+  identity: ConversationIdentity;
   updatedAt: string;
 }
 
@@ -144,6 +155,19 @@ export interface ConversationParticipant {
   alias: string;
   isAnonymous: boolean;
   isIdentityRevealed: boolean;
+  role?: string;
+  school?: string;
+  graduationYear?: number;
+}
+
+export interface ConversationIdentity {
+  isRevealed: boolean;
+  pendingRequest?: {
+    fromUserId: string;
+    fromAlias: string;
+    requestedAt: string;
+    isIncoming: boolean;
+  };
 }
 
 export interface Message {
@@ -152,6 +176,7 @@ export interface Message {
   senderId: string;
   senderAlias: string;
   content: string;
+  kind?: "text" | "identity-request" | "identity-accepted" | "identity-declined";
   createdAt: string;
 }
 
@@ -175,4 +200,10 @@ export interface PlatformStats {
     commentsPerPost: number;
     messagesPerUser: number;
   };
+}
+
+export interface SearchResults {
+  users: User[];
+  companies: Company[];
+  posts: Post[];
 }
