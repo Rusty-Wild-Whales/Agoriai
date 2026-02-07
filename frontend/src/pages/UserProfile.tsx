@@ -34,6 +34,7 @@ function StatCallout({
 }) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
+  const animationRef = useRef<number | null>(null);
   const inView = useInView(ref, { once: true });
 
   useEffect(() => {
@@ -45,9 +46,14 @@ function StatCallout({
       const progress = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
       setCount(Math.round(eased * value));
-      if (progress < 1) requestAnimationFrame(animate);
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      }
     };
-    requestAnimationFrame(animate);
+    animationRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
   }, [inView, value]);
 
   return (

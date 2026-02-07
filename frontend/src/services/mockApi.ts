@@ -80,7 +80,8 @@ export const mockApi = {
     return mockUsers.find((u) => u.id === id);
   },
 
-  getGraphData: async (_filters?: { industry?: string; university?: string }): Promise<GraphData> => {
+  getGraphData: async (filters?: { industry?: string; university?: string }): Promise<GraphData> => {
+    void filters;
     await delay(500);
     return mockGraphData;
   },

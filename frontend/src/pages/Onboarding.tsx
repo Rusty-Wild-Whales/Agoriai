@@ -24,14 +24,15 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
-  const [seed, setSeed] = useState("onboard-" + Date.now());
+  const [seedCounter, setSeedCounter] = useState(0);
   const [university, setUniversity] = useState("");
   const [gradYear, setGradYear] = useState("2026");
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const seed = `onboard-${seedCounter}`;
 
   const alias = generateAnonName(seed);
 
-  const regenerate = () => setSeed("onboard-" + Date.now());
+  const regenerate = () => setSeedCounter((value) => value + 1);
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests((prev) =>

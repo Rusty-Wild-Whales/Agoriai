@@ -1,10 +1,12 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-display: "Fraunces", serif;
-  --font-body: "Outfit", sans-serif;
+  --font-body: "Manrope", sans-serif;
 
-  /* Primary - Deep navy blues */
   --color-primary-950: #020617;
   --color-primary-900: #0f172a;
   --color-primary-800: #1e293b;
@@ -17,7 +19,6 @@
   --color-primary-100: #f1f5f9;
   --color-primary-50: #f8fafc;
 
-  /* Accent - Amber/Gold */
   --color-accent-900: #78350f;
   --color-accent-800: #92400e;
   --color-accent-700: #b45309;
@@ -29,7 +30,6 @@
   --color-accent-100: #fef3c7;
   --color-accent-50: #fffbeb;
 
-  /* Neutral - Zinc grays */
   --color-neutral-950: #09090b;
   --color-neutral-900: #18181b;
   --color-neutral-800: #27272a;
@@ -41,6 +41,38 @@
   --color-neutral-200: #e4e4e7;
   --color-neutral-100: #f4f4f5;
   --color-neutral-50: #fafafa;
+}
+
+:root {
+  --app-bg: #f4f0e7;
+  --app-fg: #1f2937;
+  --surface-0: rgba(255, 255, 255, 0.8);
+  --surface-1: rgba(255, 255, 255, 0.94);
+  --surface-2: rgba(255, 255, 255, 1);
+  --surface-hover: rgba(255, 255, 255, 1);
+  --border-soft: rgba(148, 163, 184, 0.32);
+  --border-strong: rgba(100, 116, 139, 0.42);
+  --ring-accent: rgba(245, 158, 11, 0.42);
+  --mosaic-a: rgba(245, 158, 11, 0.2);
+  --mosaic-b: rgba(14, 116, 144, 0.14);
+  --mosaic-c: rgba(2, 132, 199, 0.1);
+  --shadow-soft: 0 12px 34px rgba(15, 23, 42, 0.08);
+}
+
+html.dark {
+  --app-bg: #050a15;
+  --app-fg: #e2e8f0;
+  --surface-0: rgba(15, 23, 42, 0.75);
+  --surface-1: rgba(15, 23, 42, 0.9);
+  --surface-2: rgba(15, 23, 42, 0.98);
+  --surface-hover: rgba(30, 41, 59, 0.95);
+  --border-soft: rgba(71, 85, 105, 0.46);
+  --border-strong: rgba(148, 163, 184, 0.24);
+  --ring-accent: rgba(245, 158, 11, 0.5);
+  --mosaic-a: rgba(245, 158, 11, 0.2);
+  --mosaic-b: rgba(56, 189, 248, 0.16);
+  --mosaic-c: rgba(59, 130, 246, 0.16);
+  --shadow-soft: 0 20px 44px rgba(2, 6, 23, 0.45);
 }
 
 * {
@@ -57,31 +89,88 @@ html.dark {
 
 body {
   margin: 0;
+  color: var(--app-fg);
   font-family: var(--font-body);
+  background-color: var(--app-bg);
+  background-image:
+    radial-gradient(circle at 12% 18%, var(--mosaic-a) 0%, transparent 48%),
+    radial-gradient(circle at 88% 0%, var(--mosaic-b) 0%, transparent 52%),
+    radial-gradient(circle at 72% 72%, var(--mosaic-c) 0%, transparent 48%),
+    linear-gradient(140deg, transparent 0%, rgba(255, 255, 255, 0.2) 100%);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Improve scrollbar styling for dark mode */
-.dark ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+#root {
+  min-height: 100vh;
 }
 
-.dark ::-webkit-scrollbar-track {
-  background: #27272a;
+.mosaic-shell {
+  position: relative;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: #52525b;
-  border-radius: 4px;
+.mosaic-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(45deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(-45deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 26px 26px, 36px 36px;
+  opacity: 0.34;
+  mix-blend-mode: soft-light;
 }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #71717a;
+.mosaic-surface {
+  background: var(--surface-0);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
 }
 
-/* Star animations for landing and onboarding pages */
+.mosaic-surface-strong {
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+.mosaic-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+.mosaic-hover:hover {
+  background: var(--surface-hover);
+}
+
+::selection {
+  background: rgba(245, 158, 11, 0.26);
+  color: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.52);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.76);
+  background-clip: padding-box;
+}
+
 @keyframes twinkle {
   0%, 100% { opacity: var(--star-base-opacity, 0.2); transform: scale(1); }
   50% { opacity: calc(var(--star-base-opacity, 0.2) + 0.3); transform: scale(1.2); }
@@ -107,9 +196,20 @@ body {
 
 .star-drift {
   animation: drift var(--star-drift-duration, 18s) ease-in-out var(--star-delay, 0s) infinite,
-             shimmer var(--star-duration, 5s) ease-in-out var(--star-delay, 0s) infinite;
+    shimmer var(--star-duration, 5s) ease-in-out var(--star-delay, 0s) infinite;
 }
 
 .star-shimmer {
   animation: shimmer var(--star-duration, 3s) ease-in-out var(--star-delay, 0s) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }

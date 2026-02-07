@@ -5,14 +5,14 @@ interface SkeletonProps {
 export function Skeleton({ className = "" }: SkeletonProps) {
   return (
     <div
-      className={`animate-pulse rounded-lg bg-neutral-200 ${className}`}
+      className={`animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700/70 ${className}`}
     />
   );
 }
 
 export function PostCardSkeleton() {
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-5 space-y-3">
+    <div className="mosaic-surface-strong rounded-2xl p-5 space-y-3">
       <div className="flex items-center gap-3">
         <Skeleton className="w-10 h-10 rounded-full" />
         <div className="space-y-1.5">
@@ -33,7 +33,7 @@ export function PostCardSkeleton() {
 
 export function StatSkeleton() {
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-5 space-y-2">
+    <div className="mosaic-surface-strong rounded-2xl p-5 space-y-2">
       <Skeleton className="h-3 w-20" />
       <Skeleton className="h-8 w-16" />
     </div>

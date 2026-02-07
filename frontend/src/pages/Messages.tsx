@@ -88,6 +88,17 @@ export default function Messages() {
     if (!newMessage.trim() || !activeConvId) return;
     const msg = await mockApi.sendMessage(activeConvId, newMessage);
     setMessages((prev) => [...prev, msg]);
+    setConversations((prev) =>
+      prev.map((conv) =>
+        conv.id === activeConvId
+          ? {
+              ...conv,
+              lastMessage: msg,
+              updatedAt: msg.createdAt,
+            }
+          : conv
+      )
+    );
     setNewMessage("");
   };
 
@@ -128,10 +139,10 @@ export default function Messages() {
   }
 
   return (
-    <div data-tutorial="messages-panel" className="h-[calc(100vh-8rem)] flex bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div data-tutorial="messages-panel" className="h-[calc(100vh-8rem)] flex mosaic-surface-strong rounded-2xl overflow-hidden">
       {/* Conversation List */}
-      <div className="w-80 border-r border-slate-200 dark:border-slate-700 flex flex-col shrink-0">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+      <div className="w-80 border-r border-slate-200/70 dark:border-slate-700/70 flex flex-col shrink-0">
+        <div className="p-4 border-b border-slate-200/70 dark:border-slate-700/70">
           <h2 className="font-display font-semibold text-slate-900 dark:text-white">
             Messages
           </h2>
@@ -183,7 +194,7 @@ export default function Messages() {
         {activeConv ? (
           <>
             {/* Chat header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200/70 dark:border-slate-700/70">
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <Avatar
@@ -310,7 +321,7 @@ export default function Messages() {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="p-4 border-t border-slate-200/70 dark:border-slate-700/70">
               <div className="flex gap-3">
                 <input
                   type="text"
@@ -318,7 +329,7 @@ export default function Messages() {
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Type a message..."
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300/80 dark:border-slate-600/70 bg-white/80 dark:bg-slate-900/60 text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                 />
                 <Button onClick={handleSend} disabled={!newMessage.trim()}>
                   <Send size={16} />

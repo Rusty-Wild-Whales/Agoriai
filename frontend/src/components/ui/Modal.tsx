@@ -38,7 +38,7 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
             onClick={onClose}
           />
           <motion.div
@@ -46,12 +46,12 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2 }}
-            className={`relative z-10 w-full ${sizeClasses[size]} bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-black/20 dark:shadow-black/40 border border-slate-200 dark:border-slate-700 max-h-[90vh] flex flex-col`}
+            className={`relative z-10 w-full ${sizeClasses[size]} mosaic-panel rounded-2xl max-h-[90vh] flex flex-col`}
             role="dialog"
             aria-modal="true"
             aria-label={title}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/70 dark:border-slate-700/70 shrink-0">
               <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-white">
                 {title}
               </h2>

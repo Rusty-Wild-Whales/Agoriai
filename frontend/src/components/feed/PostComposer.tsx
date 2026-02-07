@@ -67,7 +67,7 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
   return (
     <motion.div
       layout
-      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm"
+      className="mosaic-surface-strong rounded-2xl overflow-hidden"
     >
       {/* Collapsed State - Inviting CTA */}
       <AnimatePresence mode="wait">
@@ -78,7 +78,7 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setOpen(true)}
-            className="w-full flex items-center gap-4 p-4 text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+            className="w-full flex items-center gap-4 p-4 text-left cursor-pointer hover:bg-white/80 dark:hover:bg-slate-800 transition-colors group"
           >
             <Avatar seed={user?.anonAvatarSeed || "default"} size="md" />
             <div className="flex-1">
@@ -99,7 +99,7 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
             exit={{ opacity: 0 }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200/70 dark:border-slate-700/70">
               <div className="flex items-center gap-3">
                 <Sparkles size={18} className="text-amber-500" />
                 <h3 className="font-semibold text-slate-900 dark:text-white">Create a Post</h3>
@@ -192,7 +192,7 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between pt-3 border-t border-slate-200/70 dark:border-slate-700/70">
                 <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                   {isAnonymous ? <EyeOff size={16} /> : <Eye size={16} />}
                   <span>

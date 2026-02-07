@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "./Sidebar";
@@ -8,28 +7,19 @@ import { NotificationsPanel } from "./NotificationsPanel";
 import { useUIStore } from "../../stores/uiStore";
 
 export function AppLayout() {
-  const { sidebarOpen, darkMode } = useUIStore();
+  const { sidebarOpen } = useUIStore();
   const location = useLocation();
 
-  // Sync dark mode class with store state
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
+    <div className="min-h-screen mosaic-shell">
       <Sidebar />
       <motion.div
         animate={{ marginLeft: sidebarOpen ? 240 : 72 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
-        className="min-h-screen flex flex-col"
+        className="min-h-screen flex flex-col relative z-10"
       >
         <TopNav />
-        <main className="flex-1 p-6 overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

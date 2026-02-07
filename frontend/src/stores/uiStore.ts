@@ -15,12 +15,15 @@ interface UIState {
   activeModal: string | null;
   feedFilter: string;
   darkMode: boolean;
+  notificationsEnabled: boolean;
   notifications: Notification[];
   setSidebarOpen: (open: boolean) => void;
   setActiveModal: (modal: string | null) => void;
   setFeedFilter: (filter: string) => void;
   setDarkMode: (dark: boolean) => void;
   toggleDarkMode: () => void;
+  setNotificationsEnabled: (enabled: boolean) => void;
+  toggleNotificationsEnabled: () => void;
   addNotification: (notification: Omit<Notification, "id" | "read" | "createdAt">) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -62,6 +65,7 @@ export const useUIStore = create<UIState>()(
       activeModal: null,
       feedFilter: "all",
       darkMode: true, // Default to dark mode for the app aesthetic
+      notificationsEnabled: true,
       notifications: initialNotifications,
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       setActiveModal: (modal) => set({ activeModal: modal }),
@@ -85,6 +89,21 @@ export const useUIStore = create<UIState>()(
           document.documentElement.classList.remove("dark");
         }
       },
+      setNotificationsEnabled: (enabled) =>
+        set((state) => ({
+          notificationsEnabled: enabled,
+          activeModal:
+            !enabled && state.activeModal === "notifications" ? null : state.activeModal,
+        })),
+      toggleNotificationsEnabled: () =>
+        set((state) => {
+          const nextValue = !state.notificationsEnabled;
+          return {
+            notificationsEnabled: nextValue,
+            activeModal:
+              !nextValue && state.activeModal === "notifications" ? null : state.activeModal,
+          };
+        }),
       addNotification: (notification) =>
         set((state) => ({
           notifications: [
@@ -111,7 +130,10 @@ export const useUIStore = create<UIState>()(
     }),
     {
       name: "agoriai-ui-store",
-      partialize: (state) => ({ darkMode: state.darkMode }),
+      partialize: (state) => ({
+        darkMode: state.darkMode,
+        notificationsEnabled: state.notificationsEnabled,
+      }),
       onRehydrateStorage: () => (state) => {
         // When state is rehydrated from storage, sync the DOM
         if (state) {

@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { FilterBar } from "../components/feed/FilterBar";
 import { PostComposer } from "../components/feed/PostComposer";
 import { PostCard } from "../components/feed/PostCard";
@@ -7,13 +8,30 @@ import { usePosts, useUpvotePost, useCreatePost } from "../hooks/usePosts";
 import type { PostCategory } from "../types";
 
 export default function Feed() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") ?? "");
 
   const { data: posts, isLoading } = usePosts(filter);
   const upvoteMutation = useUpvotePost();
   const createMutation = useCreatePost();
+  const urlSearchQuery = searchParams.get("q") ?? "";
+
+  useEffect(() => {
+    setSearchQuery(urlSearchQuery);
+  }, [urlSearchQuery]);
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    const nextParams = new URLSearchParams(searchParams);
+    if (query.trim()) {
+      nextParams.set("q", query);
+    } else {
+      nextParams.delete("q");
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
 
   const filteredPosts = useMemo(() => {
     if (!posts) return [];
@@ -66,7 +84,7 @@ export default function Feed() {
           sortBy={sortBy}
           onSortChange={setSortBy}
           searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={handleSearchChange}
         />
       </div>
 
@@ -77,8 +95,8 @@ export default function Feed() {
           ))
         ) : filteredPosts.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-neutral-400 text-lg mb-2">No posts found</p>
-            <p className="text-neutral-400 text-sm">
+            <p className="text-slate-500 text-lg mb-2">No posts found</p>
+            <p className="text-slate-500 text-sm">
               The Agora is waiting for your voice. Share your first experience.
             </p>
           </div>

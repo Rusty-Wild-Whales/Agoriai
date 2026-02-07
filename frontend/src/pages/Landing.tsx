@@ -1,35 +1,38 @@
-import { useRef, useMemo } from "react";
+import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { Button } from "../components/ui/Button";
 
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed * 12.9898) * 43758.5453123;
+  return x - Math.floor(x);
+}
+
 // Floating star field — fewer, softer stars that gently drift
 export function StarField() {
-  const stars = useMemo(() => {
-    const result = [];
-    for (let i = 0; i < 90; i++) {
-      const baseOpacity = Math.random() * 0.4 + 0.15;
-      result.push({
-        id: i,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 2.5 + 0.8,
-        opacity: baseOpacity,
-        delay: Math.random() * 10,
-        duration: Math.random() * 4 + 4,
-        driftDuration: Math.random() * 15 + 12,
-        // Most stars gently drift, some twinkle
-        animation: Math.random() > 0.3 ? "star-drift" : "star-shimmer",
-        color: Math.random() > 0.8
-          ? "bg-white"
-          : Math.random() > 0.5
-          ? "bg-slate-300"
-          : "bg-slate-400/80",
-      });
-    }
-    return result;
-  }, []);
+  const stars = Array.from({ length: 90 }, (_, i) => {
+    const base = i + 1;
+    const baseOpacity = seededRandom(base) * 0.4 + 0.15;
+    const colorValue = seededRandom(base * 17);
+
+    return {
+      id: i,
+      x: seededRandom(base * 2) * 100,
+      y: seededRandom(base * 3) * 100,
+      size: seededRandom(base * 5) * 2.5 + 0.8,
+      opacity: baseOpacity,
+      delay: seededRandom(base * 7) * 10,
+      duration: seededRandom(base * 11) * 4 + 4,
+      driftDuration: seededRandom(base * 13) * 15 + 12,
+      animation: seededRandom(base * 19) > 0.3 ? "star-drift" : "star-shimmer",
+      color: colorValue > 0.8
+        ? "bg-white"
+        : colorValue > 0.5
+        ? "bg-slate-300"
+        : "bg-slate-400/80",
+    };
+  });
 
   return (
     <div className="absolute inset-0 overflow-hidden">

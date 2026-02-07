@@ -59,8 +59,8 @@ export default function CompanyProfile() {
     return (
       <div className="text-center py-20">
         <p className="text-neutral-500 text-lg">Company not found</p>
-        <Link to="/mosaic" className="text-primary-500 hover:underline text-sm mt-2 inline-block">
-          Back to Mosaic
+        <Link to="/nexus" className="text-primary-500 hover:underline text-sm mt-2 inline-block">
+          Back to Nexus
         </Link>
       </div>
     );
@@ -68,8 +68,8 @@ export default function CompanyProfile() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Link to="/mosaic" className="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-primary-700 transition-colors">
-        <ArrowLeft size={16} /> Back to Mosaic
+      <Link to="/nexus" className="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-primary-700 transition-colors">
+        <ArrowLeft size={16} /> Back to Nexus
       </Link>
 
       {/* Header */}

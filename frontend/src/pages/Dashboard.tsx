@@ -24,6 +24,7 @@ import { useTutorial } from "../components/tutorial/TutorialProvider";
 function AnimatedCounter({ value, label, icon: Icon, accent = false }: { value: number; label: string; icon: React.ElementType; accent?: boolean }) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
+  const animationRef = useRef<number | null>(null);
   const inView = useInView(ref, { once: true });
 
   useEffect(() => {
@@ -35,9 +36,14 @@ function AnimatedCounter({ value, label, icon: Icon, accent = false }: { value: 
       const progress = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
       setCount(Math.round(eased * value));
-      if (progress < 1) requestAnimationFrame(animate);
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      }
     };
-    requestAnimationFrame(animate);
+    animationRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
   }, [inView, value]);
 
   return (
@@ -49,7 +55,7 @@ function AnimatedCounter({ value, label, icon: Icon, accent = false }: { value: 
       className={`text-center p-5 rounded-xl border transition-all ${
         accent
           ? "bg-amber-500/10 border-amber-500/30"
-          : "bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600/50"
+          : "mosaic-surface hover:border-slate-300 dark:hover:border-slate-600/50"
       }`}
     >
       <div className={`p-2.5 rounded-xl mx-auto mb-3 w-fit ${accent ? "bg-amber-500/20" : "bg-slate-100 dark:bg-slate-700/50"}`}>
@@ -93,7 +99,7 @@ export default function Dashboard() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 via-slate-50 to-white dark:from-slate-800 dark:via-slate-800/80 dark:to-slate-900 p-6 border border-slate-200 dark:border-slate-700/50"
+          className="relative overflow-hidden rounded-2xl mosaic-surface-strong p-6"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-slate-500/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
@@ -165,8 +171,8 @@ export default function Dashboard() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center gap-2">
+        <div className="mosaic-surface-strong rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-200/70 dark:border-slate-700/70 flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/50">
               <FileText size={14} className="text-slate-400" />
             </div>
@@ -199,8 +205,8 @@ export default function Dashboard() {
         </div>
 
         {/* Trending */}
-        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center gap-2">
+        <div className="mosaic-surface-strong rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-200/70 dark:border-slate-700/70 flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-amber-500/20">
               <TrendingUp size={14} className="text-amber-400" />
             </div>

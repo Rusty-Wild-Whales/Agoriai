@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThumbsUp, ThumbsDown, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Avatar } from "../ui/Avatar";
@@ -22,7 +22,8 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onUpvote }: PostCardProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [showFullContent, setShowFullContent] = useState(false);
+  const [showComments, setShowComments] = useState(false);
   const [upvoted, setUpvoted] = useState(false);
   const [downvoted, setDownvoted] = useState(false);
   const [voteCount, setVoteCount] = useState(post.upvotes);
@@ -30,19 +31,26 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [loadingComments, setLoadingComments] = useState(false);
 
-  // Load comments when expanded
-  useEffect(() => {
-    if (expanded && comments.length === 0) {
-      setLoadingComments(true);
-      mockApi.getComments(post.id).then((data) => {
-        setComments(data);
-        // Calculate total comments including replies
-        const total = data.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
-        setCommentCount(total);
-        setLoadingComments(false);
-      });
+  const loadComments = async () => {
+    if (comments.length > 0) return;
+    setLoadingComments(true);
+    try {
+      const data = await mockApi.getComments(post.id);
+      setComments(data);
+      const total = data.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
+      setCommentCount(total);
+    } finally {
+      setLoadingComments(false);
     }
-  }, [expanded, post.id, comments.length]);
+  };
+
+  const toggleComments = () => {
+    const next = !showComments;
+    setShowComments(next);
+    if (next) {
+      void loadComments();
+    }
+  };
 
   const handleUpvote = () => {
     if (upvoted) {
@@ -80,14 +88,14 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
   };
 
   const contentPreview =
-    post.content.length > 200 && !expanded
+    post.content.length > 200 && !showFullContent
       ? post.content.slice(0, 200) + "..."
       : post.content;
 
   return (
     <motion.div
       layout
-      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+      className="mosaic-surface-strong rounded-2xl overflow-hidden hover:shadow-md transition-shadow"
     >
       <div className="p-5">
         {/* Header */}
@@ -115,10 +123,10 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
         </div>
         {post.content.length > 200 && (
           <button
-            onClick={() => setExpanded(!expanded)}
+            onClick={() => setShowFullContent((prev) => !prev)}
             className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 mt-2 flex items-center gap-1 cursor-pointer"
           >
-            {expanded ? (
+            {showFullContent ? (
               <>Show less <ChevronUp size={14} /></>
             ) : (
               <>Read more <ChevronDown size={14} /></>
@@ -137,7 +145,7 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-200/70 dark:border-slate-700/70">
           {/* Upvote/Downvote */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
             <motion.button
@@ -172,7 +180,7 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
 
           {/* Comments */}
           <button
-            onClick={() => setExpanded(!expanded)}
+            onClick={toggleComments}
             className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-500 dark:hover:text-slate-400 transition-colors cursor-pointer"
           >
             <MessageCircle size={16} />
@@ -183,13 +191,13 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
 
       {/* Comments */}
       <AnimatePresence>
-        {expanded && (
+        {showComments && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"
+            className="border-t border-slate-200/70 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-800/30"
           >
             <CommentThread
               postId={post.id}

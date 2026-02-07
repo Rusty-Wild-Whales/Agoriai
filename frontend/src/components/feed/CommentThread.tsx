@@ -74,7 +74,7 @@ function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (conten
                 onChange={(e) => setReplyText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleReplySubmit()}
                 placeholder="Write a reply..."
-                className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                className="flex-1 px-3 py-1.5 rounded-xl border border-slate-300/80 dark:border-slate-600/70 bg-white/85 dark:bg-slate-900/60 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
               />
               <Button size="sm" onClick={handleReplySubmit} disabled={!replyText.trim()}>
                 Reply
@@ -124,13 +124,8 @@ interface CommentThreadProps {
 export function CommentThread({ postId, comments = [], loading = false, onCommentAdded }: CommentThreadProps) {
   const { user, getDisplayName } = useAuthStore();
   const isAnonymous = useIsAnonymous();
-  const [localComments, setLocalComments] = useState<Comment[]>(comments);
+  const [addedComments, setAddedComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
-
-  // Sync with prop changes
-  if (comments.length > 0 && localComments.length === 0) {
-    setLocalComments(comments);
-  }
 
   const handleSubmit = () => {
     if (!newComment.trim()) return;
@@ -144,12 +139,12 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
       isAnonymous,
       createdAt: new Date().toISOString(),
     };
-    setLocalComments((prev) => [...prev, comment]);
+    setAddedComments((prev) => [...prev, comment]);
     setNewComment("");
     onCommentAdded?.();
   };
 
-  const displayComments = localComments.length > 0 ? localComments : comments;
+  const displayComments = [...comments, ...addedComments];
 
   return (
     <div className="p-5 space-y-4">
@@ -185,7 +180,7 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
             onChange={(e) => setNewComment(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSubmit()}
             placeholder="Add a comment..."
-            className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+            className="flex-1 px-3 py-2 rounded-xl border border-slate-300/80 dark:border-slate-600/70 bg-white/85 dark:bg-slate-900/60 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
           />
           <Button size="sm" onClick={handleSubmit} disabled={!newComment.trim()}>
             Comment

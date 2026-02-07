@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -78,7 +79,7 @@ export const tutorials: Record<string, Tutorial> = {
         title: "Explore Connections",
         content: "Drag, zoom, and hover over nodes to discover relationships between companies and contributors. The larger the node, the more community engagement it has.",
         target: "[data-tutorial='nexus-graph']",
-        position: "bottom",
+        position: "top",
         navigate: "/nexus",
       },
       {
@@ -314,40 +315,53 @@ function TutorialOverlay() {
           height: rect.height + padding * 2,
         });
 
-        // Calculate tooltip position
+        // Calculate tooltip position with viewport clamping and directional fallback
         const tooltipWidth = 380;
         const tooltipHeight = 200;
         const gap = 16;
-        let style: React.CSSProperties = {};
+        const viewportPadding = 16;
+        let top = Math.max(viewportPadding, rect.bottom + gap);
+        let left = Math.max(viewportPadding, rect.left + rect.width / 2 - tooltipWidth / 2);
 
         switch (step.position) {
           case "top":
-            style = {
-              bottom: window.innerHeight - rect.top + gap,
-              left: Math.max(16, rect.left + rect.width / 2 - tooltipWidth / 2),
-            };
+            top = rect.top - tooltipHeight - gap;
+            if (top < viewportPadding) {
+              top = rect.bottom + gap;
+            }
             break;
           case "bottom":
-            style = {
-              top: rect.bottom + gap,
-              left: Math.max(16, rect.left + rect.width / 2 - tooltipWidth / 2),
-            };
+            top = rect.bottom + gap;
+            if (top + tooltipHeight > window.innerHeight - viewportPadding) {
+              top = rect.top - tooltipHeight - gap;
+            }
             break;
           case "left":
-            style = {
-              top: Math.max(16, rect.top + rect.height / 2 - tooltipHeight / 2),
-              right: window.innerWidth - rect.left + gap,
-            };
+            top = rect.top + rect.height / 2 - tooltipHeight / 2;
+            left = rect.left - tooltipWidth - gap;
+            if (left < viewportPadding) {
+              left = rect.right + gap;
+            }
             break;
           case "right":
-            style = {
-              top: Math.max(16, rect.top + rect.height / 2 - tooltipHeight / 2),
-              left: rect.right + gap,
-            };
+            top = rect.top + rect.height / 2 - tooltipHeight / 2;
+            left = rect.right + gap;
+            if (left + tooltipWidth > window.innerWidth - viewportPadding) {
+              left = rect.left - tooltipWidth - gap;
+            }
             break;
         }
 
-        setTooltipStyle(style);
+        left = Math.min(
+          Math.max(viewportPadding, left),
+          window.innerWidth - tooltipWidth - viewportPadding
+        );
+        top = Math.min(
+          Math.max(viewportPadding, top),
+          window.innerHeight - tooltipHeight - viewportPadding
+        );
+
+        setTooltipStyle({ top, left });
       } else {
         attempts++;
         if (attempts <= maxAttempts) {
@@ -377,7 +391,6 @@ function TutorialOverlay() {
 
   const isFirst = currentStep === 0;
   const isLast = currentStep === activeTutorial.steps.length - 1;
-  const progress = ((currentStep + 1) / activeTutorial.steps.length) * 100;
 
   return (
     <AnimatePresence>

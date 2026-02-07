@@ -20,11 +20,12 @@ export function NotificationsPanel() {
     activeModal,
     setActiveModal,
     notifications,
+    notificationsEnabled,
     markNotificationRead,
     markAllNotificationsRead,
   } = useUIStore();
 
-  const isOpen = activeModal === "notifications";
+  const isOpen = activeModal === "notifications" && notificationsEnabled;
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
@@ -46,10 +47,10 @@ export function NotificationsPanel() {
             animate={{ opacity: 1, y: 0, x: 0 }}
             exit={{ opacity: 0, y: -10, x: 10 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed top-16 right-6 w-96 max-h-[calc(100vh-6rem)] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden"
+            className="fixed top-16 right-6 w-96 max-h-[calc(100vh-6rem)] mosaic-panel rounded-xl z-50 overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200/70 dark:border-slate-700/70">
               <div className="flex items-center gap-2">
                 <Bell size={18} className="text-slate-600 dark:text-slate-400" />
                 <h3 className="font-semibold text-slate-900 dark:text-white">
@@ -95,7 +96,7 @@ export function NotificationsPanel() {
                       key={notification.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className={`p-4 border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer ${
+                      className={`p-4 border-b border-slate-100/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer ${
                         !notification.read ? "bg-amber-50/50 dark:bg-amber-900/10" : ""
                       }`}
                       onClick={() => markNotificationRead(notification.id)}
