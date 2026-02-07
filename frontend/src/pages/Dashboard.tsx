@@ -95,10 +95,17 @@ function AnimatedCounter({
 }
 
 export default function Dashboard() {
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
   const { startTutorial, completedTutorials, activeTutorial } = useTutorial();
   const autoStartAttemptedRef = useRef(false);
-  const stats = user?.stats;
+  const { data: liveUser } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: () => agoraApi.getCurrentUser(),
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+  const resolvedUser = liveUser ?? user;
+  const stats = resolvedUser?.stats;
   const { data: recentPosts = [] } = useQuery({
     queryKey: ["dashboard", "recent-posts"],
     queryFn: () => agoraApi.getRecentPosts(5),
@@ -119,6 +126,12 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [showWelcomeBanner, activeTutorial, startTutorial]);
 
+  useEffect(() => {
+    if (liveUser) {
+      setUser(liveUser);
+    }
+  }, [liveUser, setUser]);
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       {showWelcomeBanner && (
@@ -134,7 +147,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <h2 className="font-display text-xl font-semibold text-slate-900 dark:text-white">
-                  Welcome to Agoriai, {user?.anonAlias || "Explorer"}!
+                  Welcome to Agoriai, {resolvedUser?.anonAlias || "Explorer"}!
                 </h2>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   Take a quick walkthrough to learn the core flows.
@@ -151,11 +164,11 @@ export default function Dashboard() {
 
       <section>
         <h2 className="font-display text-3xl font-semibold text-slate-900 dark:text-white">
-          {showWelcomeBanner ? "Your Dashboard" : `Welcome back, ${user?.anonAlias || "Explorer"}`}
+          {showWelcomeBanner ? "Your Dashboard" : `Welcome back, ${resolvedUser?.anonAlias || "Explorer"}`}
         </h2>
         <p className="mt-1 text-slate-600 dark:text-slate-400">
           {stats
-            ? `You answered ${stats.questionsAnswered} questions this week and contributed to ${stats.connectionsCount} connections.`
+            ? `You have answered ${stats.questionsAnswered} questions and contributed to ${stats.connectionsCount} connections.`
             : "Your contributions shape the community."}
         </p>
       </section>

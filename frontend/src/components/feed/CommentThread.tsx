@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ThumbsUp, Reply } from "lucide-react";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
@@ -155,6 +156,7 @@ export function CommentThread({
   loading = false,
   onCommentAdded,
 }: CommentThreadProps) {
+  const queryClient = useQueryClient();
   const { user, getDisplayName } = useAuthStore();
   const isAnonymous = useIsAnonymous();
   const [threadComments, setThreadComments] = useState<Comment[]>(comments);
@@ -192,6 +194,7 @@ export function CommentThread({
       await refreshComments();
       setNewComment("");
       onCommentAdded?.();
+      void queryClient.invalidateQueries({ queryKey: ["current-user"] });
     } catch (error) {
       console.error("Failed to submit comment", error);
       const fallback = createLocalComment(newComment.trim());
@@ -212,6 +215,7 @@ export function CommentThread({
       });
       await refreshComments();
       onCommentAdded?.();
+      void queryClient.invalidateQueries({ queryKey: ["current-user"] });
       return;
     } catch (error) {
       console.error("Failed to submit reply", error);
@@ -244,22 +248,27 @@ export function CommentThread({
   };
 
   const handleVoteChange = async (commentId: string, nextVote: -1 | 0 | 1) => {
-    const result = await agoraApi.voteComment(commentId, nextVote);
+    try {
+      const result = await agoraApi.voteComment(commentId, nextVote);
 
-    const updateById = (items: Comment[]): Comment[] =>
-      items.map((item) => {
-        if (item.id === result.id) {
-          return { ...item, upvotes: result.upvotes };
-        }
+      const updateById = (items: Comment[]): Comment[] =>
+        items.map((item) => {
+          if (item.id === result.id) {
+            return { ...item, upvotes: result.upvotes };
+          }
 
-        if (item.replies?.length) {
-          return { ...item, replies: updateById(item.replies) };
-        }
+          if (item.replies?.length) {
+            return { ...item, replies: updateById(item.replies) };
+          }
 
-        return item;
-      });
+          return item;
+        });
 
-    setThreadComments((prev) => updateById(prev));
+      setThreadComments((prev) => updateById(prev));
+      void queryClient.invalidateQueries({ queryKey: ["current-user"] });
+    } catch (error) {
+      console.error("Failed to vote on comment", error);
+    }
   };
 
   return (

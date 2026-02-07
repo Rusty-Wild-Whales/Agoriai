@@ -7,6 +7,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   gt,
@@ -56,6 +57,14 @@ const db = drizzle(pool);
 type UserRow = typeof usersTable.$inferSelect;
 type PostVoteValue = -1 | 0 | 1;
 
+type UserStats = {
+  postsCreated: number;
+  questionsAnswered: number;
+  helpfulVotes: number;
+  connectionsCount: number;
+  contributionScore: number;
+};
+
 type PostResponse = {
   id: string;
   authorId: string;
@@ -85,13 +94,7 @@ type UserResponse = {
   fieldsOfInterest: string[];
   isAnonymous: boolean;
   createdAt: string;
-  stats: {
-    postsCreated: number;
-    questionsAnswered: number;
-    helpfulVotes: number;
-    connectionsCount: number;
-    contributionScore: number;
-  };
+  stats: UserStats;
 };
 
 type CommentResponse = {
@@ -117,7 +120,60 @@ function toIso(value: Date | string | null | undefined): string {
   return (typeof value === "string" ? new Date(value) : value).toISOString();
 }
 
-function serializeUser(user: UserRow): UserResponse {
+async function computeUserStats(userId: string): Promise<UserStats> {
+  const [postsCreatedRow] = await db
+    .select({ count: count() })
+    .from(postsTable)
+    .where(eq(postsTable.authorId, userId));
+  const postsCreated = Number(postsCreatedRow?.count ?? 0);
+
+  const [questionsAnsweredRow] = await db
+    .select({ count: count() })
+    .from(commentsTable)
+    .innerJoin(postsTable, eq(commentsTable.postId, postsTable.id))
+    .where(and(eq(commentsTable.authorId, userId), eq(postsTable.category, "question")));
+  const questionsAnswered = Number(questionsAnsweredRow?.count ?? 0);
+
+  const [postHelpfulVotesRow] = await db
+    .select({ total: sql<number>`coalesce(sum(${postsTable.upvotes}), 0)` })
+    .from(postsTable)
+    .where(eq(postsTable.authorId, userId));
+  const [commentHelpfulVotesRow] = await db
+    .select({ total: sql<number>`coalesce(sum(${commentsTable.upvotes}), 0)` })
+    .from(commentsTable)
+    .where(eq(commentsTable.authorId, userId));
+
+  const postHelpfulVotes = Number(postHelpfulVotesRow?.total ?? 0);
+  const commentHelpfulVotes = Number(commentHelpfulVotesRow?.total ?? 0);
+  const helpfulVotes = postHelpfulVotes + commentHelpfulVotes;
+
+  const connectionRows = await db
+    .selectDistinct({ targetId: connectionsTable.targetId })
+    .from(connectionsTable)
+    .where(
+      and(
+        eq(connectionsTable.sourceId, userId),
+        eq(connectionsTable.sourceType, "user"),
+        eq(connectionsTable.targetType, "user")
+      )
+    );
+  const connectionsCount = connectionRows.filter((row) => row.targetId !== userId).length;
+
+  const contributionScore =
+    postsCreated * 5 + questionsAnswered * 3 + helpfulVotes * 2 + connectionsCount * 4;
+
+  return {
+    postsCreated,
+    questionsAnswered,
+    helpfulVotes,
+    connectionsCount,
+    contributionScore,
+  };
+}
+
+async function serializeUser(user: UserRow): Promise<UserResponse> {
+  const stats = await computeUserStats(user.id);
+
   return {
     id: user.id,
     anonAlias: user.anonAlias,
@@ -128,13 +184,7 @@ function serializeUser(user: UserRow): UserResponse {
     fieldsOfInterest: user.fieldsOfInterest,
     isAnonymous: user.isAnonymous,
     createdAt: toIso(user.createdAt),
-    stats: {
-      postsCreated: user.postsCreated,
-      questionsAnswered: user.questionsAnswered,
-      helpfulVotes: user.helpfulVotes,
-      connectionsCount: user.connectionsCount,
-      contributionScore: user.contributionScore,
-    },
+    stats,
   };
 }
 
@@ -144,7 +194,21 @@ function normalizeEmail(email: string) {
 
 function isSchoolEmail(email: string) {
   const trimmed = normalizeEmail(email);
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) && /\.(edu|ac\.[a-z]{2,3})$/i.test(trimmed);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return false;
+  }
+
+  const domain = trimmed.split("@")[1] ?? "";
+  if (!domain) {
+    return false;
+  }
+
+  return (
+    domain.endsWith(".edu") ||
+    /\.edu\.[a-z]{2,3}$/i.test(domain) ||
+    /\.ac\.[a-z]{2,3}$/i.test(domain) ||
+    /\.uni\.[a-z]{2,3}$/i.test(domain)
+  );
 }
 
 function validatePasswordStrength(password: string) {
@@ -458,6 +522,42 @@ async function getCompanyList() {
   }));
 }
 
+async function getPlatformStats() {
+  const [usersCountRow] = await db.select({ count: count() }).from(usersTable);
+  const [postsCountRow] = await db.select({ count: count() }).from(postsTable);
+  const [commentsCountRow] = await db.select({ count: count() }).from(commentsTable);
+  const [messagesCountRow] = await db.select({ count: count() }).from(messagesTable);
+  const [companiesCountRow] = await db.select({ count: count() }).from(companiesTable);
+
+  const [connectionsCountRow] = await db
+    .select({
+      count: sql<number>`
+        count(
+          distinct least(${connectionsTable.sourceId}, ${connectionsTable.targetId}) || ':' ||
+          greatest(${connectionsTable.sourceId}, ${connectionsTable.targetId})
+        )
+      `,
+    })
+    .from(connectionsTable)
+    .where(
+      and(
+        eq(connectionsTable.sourceType, "user"),
+        eq(connectionsTable.targetType, "user")
+      )
+    );
+
+  return {
+    users: Number(usersCountRow?.count ?? 0),
+    posts: Number(postsCountRow?.count ?? 0),
+    comments: Number(commentsCountRow?.count ?? 0),
+    messages: Number(messagesCountRow?.count ?? 0),
+    companies: Number(companiesCountRow?.count ?? 0),
+    userConnections: Number(connectionsCountRow?.count ?? 0),
+    generatedAt: new Date().toISOString(),
+    source: "live_database",
+  };
+}
+
 async function applyPostVote(postId: string, userId: string, nextValue: PostVoteValue) {
   return db.transaction(async (tx) => {
     const [post] = await tx
@@ -596,6 +696,9 @@ const app = new Elysia()
     })
   )
   .get("/health", () => ({ ok: true }))
+  .get("/api/stats/platform", async () => {
+    return getPlatformStats();
+  })
   .post("/api/auth/register", async ({ body, set }) => {
     const payload = body as {
       schoolEmail?: string;
@@ -694,7 +797,7 @@ const app = new Elysia()
     const token = await createSession(user.id);
     return {
       token,
-      user: serializeUser(user),
+      user: await serializeUser(user),
     };
   })
   .post("/api/auth/login", async ({ body, set }) => {
@@ -735,7 +838,7 @@ const app = new Elysia()
     const token = await createSession(account.user.id);
     return {
       token,
-      user: serializeUser(account.user),
+      user: await serializeUser(account.user),
     };
   })
   .post("/api/auth/logout", async ({ headers }) => {
@@ -745,20 +848,73 @@ const app = new Elysia()
     }
     return { ok: true };
   })
+  .post("/api/auth/delete-account", async ({ headers, body, set }) => {
+    const auth = await getAuthSession(headers as Record<string, string | undefined>);
+    if (!auth) {
+      set.status = 401;
+      return { message: "Unauthorized" };
+    }
+
+    const payload = body as { password?: string };
+    const password = payload.password ?? "";
+    if (!password) {
+      set.status = 400;
+      return { message: "Password is required to delete your account" };
+    }
+
+    const [account] = await db
+      .select({
+        passwordHash: authAccountsTable.passwordHash,
+      })
+      .from(authAccountsTable)
+      .where(eq(authAccountsTable.userId, auth.user.id))
+      .limit(1);
+
+    if (!account) {
+      set.status = 404;
+      return { message: "Account credentials not found" };
+    }
+
+    const passwordValid = await Bun.password.verify(password, account.passwordHash);
+    if (!passwordValid) {
+      set.status = 401;
+      return { message: "Invalid password" };
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(connectionsTable)
+        .where(or(eq(connectionsTable.sourceId, auth.user.id), eq(connectionsTable.targetId, auth.user.id)));
+
+      await tx.delete(authSessionsTable).where(eq(authSessionsTable.userId, auth.user.id));
+      await tx.delete(usersTable).where(eq(usersTable.id, auth.user.id));
+
+      await tx.execute(sql`
+        DELETE FROM conversations AS c
+        WHERE (
+          SELECT COUNT(*)
+          FROM conversation_participants AS cp
+          WHERE cp.conversation_id = c.id
+        ) < 2
+      `);
+    });
+
+    return { ok: true };
+  })
   .get("/api/users/me", async ({ headers, set }) => {
     const auth = await getAuthSession(headers as Record<string, string | undefined>);
     if (!auth) {
       set.status = 401;
       return { message: "Unauthorized" };
     }
-    return serializeUser(auth.user);
+    return await serializeUser(auth.user);
   })
   .get("/api/users", async ({ query }) => {
     const search = typeof query.q === "string" ? query.q.trim().toLowerCase() : "";
     const limit = ensurePositiveInt(typeof query.limit === "string" ? query.limit : undefined, 20);
 
-    const users = await db.select().from(usersTable).orderBy(desc(usersTable.contributionScore)).limit(limit * 3);
-    return users
+    const users = await db.select().from(usersTable).orderBy(desc(usersTable.createdAt)).limit(limit * 3);
+    const filteredUsers = users
       .filter((user) => {
         if (!search) return true;
         return (
@@ -767,8 +923,9 @@ const app = new Elysia()
           user.fieldsOfInterest.some((field) => field.toLowerCase().includes(search))
         );
       })
-      .slice(0, limit)
-      .map(serializeUser);
+      .slice(0, limit);
+
+    return Promise.all(filteredUsers.map((item) => serializeUser(item)));
   })
   .get("/api/users/:id", async ({ params, set }) => {
     const user = await getUserById(params.id);
@@ -776,7 +933,7 @@ const app = new Elysia()
       set.status = 404;
       return { message: "User not found" };
     }
-    return serializeUser(user);
+    return await serializeUser(user);
   })
   .get("/api/users/:id/posts", async ({ params, headers }) => {
     const auth = await getAuthSession(headers as Record<string, string | undefined>);

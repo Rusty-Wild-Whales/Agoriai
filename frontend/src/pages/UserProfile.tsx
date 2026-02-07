@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   FileText,
   MessageCircle,
@@ -76,6 +77,7 @@ function StatCallout({
 export default function UserProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
   const [user, setUser] = useState<User | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -128,6 +130,11 @@ export default function UserProfile() {
     try {
       const result = await agoraApi.connectUser(user.id);
       setActionMessage(result.alreadyConnected ? "Already connected." : "Connection created.");
+      if (!result.alreadyConnected) {
+        const refreshedProfile = await agoraApi.getUser(user.id);
+        setUser(refreshedProfile);
+      }
+      void queryClient.invalidateQueries({ queryKey: ["current-user"] });
     } catch (error) {
       setActionMessage(error instanceof Error ? error.message : "Failed to connect.");
     } finally {

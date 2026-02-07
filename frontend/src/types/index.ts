@@ -159,3 +159,14 @@ export interface AuthResponse {
   token: string;
   user: User;
 }
+
+export interface PlatformStats {
+  users: number;
+  posts: number;
+  comments: number;
+  messages: number;
+  companies: number;
+  userConnections: number;
+  generatedAt: string;
+  source: "live_database";
+}

@@ -1,8 +1,10 @@
 import { useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { Button } from "../components/ui/Button";
+import { agoraApi } from "../services/agoraApi";
 
 function seededRandom(seed: number): number {
   const x = Math.sin(seed * 12.9898) * 43758.5453123;
@@ -100,6 +102,15 @@ export default function Landing() {
   const { scrollYProgress } = useScroll();
   const heroOpacity = useTransform(scrollYProgress, [0, 0.12], [1, 0]);
   const heroY = useTransform(scrollYProgress, [0, 0.12], [0, -30]);
+  const { data: platformStats } = useQuery({
+    queryKey: ["platform-stats"],
+    queryFn: () => agoraApi.getPlatformStats(),
+    staleTime: 60_000,
+  });
+
+  const countFormatter = new Intl.NumberFormat("en-US");
+  const formatCount = (value: number | undefined) =>
+    typeof value === "number" ? countFormatter.format(value) : "—";
 
   return (
     <div className="relative min-h-screen bg-[#060e1b] font-body overflow-x-hidden">
@@ -116,7 +127,6 @@ export default function Landing() {
           className="relative min-h-screen flex flex-col items-center justify-center"
         >
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.08)_0%,_transparent_62%)]" />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#060e1b]/12 to-[#060e1b]/70" />
 
           {/* Hero Content */}
           <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
@@ -195,27 +205,30 @@ export default function Landing() {
           <div className="max-w-6xl mx-auto">
             <AnimatedSection className="text-center mb-16">
               <span className="inline-block px-4 py-2 rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium tracking-wider mb-6 border border-amber-500/20">
-                THE PROBLEM
+                PLATFORM SNAPSHOT
               </span>
               <h2 className="font-display text-3xl md:text-5xl font-bold text-white leading-tight">
-                The playing field was never level
+                Verified Community Metrics
               </h2>
             </AnimatedSection>
 
             <AnimatedSection delay={0.15} className="max-w-3xl mx-auto text-center mb-16">
               <p className="text-base md:text-lg text-slate-300 leading-relaxed">
-                Students from well-connected backgrounds enter the job market with
-                compounding advantages. Access to insider knowledge, mentorship, and
-                referrals is gatekept by pedigree, not potential.
+                These numbers are calculated directly from the live application database, not hardcoded estimates.
               </p>
             </AnimatedSection>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
-              <StatCard value="3x" label="More likely to get interviews with connections" delay={0} />
-              <StatCard value="68%" label="Feel they lack career guidance" delay={0.08} />
-              <StatCard value="42%" label="Jobs filled via informal networks" delay={0.16} />
-              <StatCard value="$12K" label="First job salary gap" delay={0.24} />
+              <StatCard value={formatCount(platformStats?.users)} label="Registered users" delay={0} />
+              <StatCard value={formatCount(platformStats?.posts)} label="Posts shared" delay={0.08} />
+              <StatCard value={formatCount(platformStats?.messages)} label="Messages exchanged" delay={0.16} />
+              <StatCard value={formatCount(platformStats?.userConnections)} label="User connections" delay={0.24} />
             </div>
+
+            <p className="mt-6 text-center text-xs text-slate-400">
+              Source: live database ({platformStats?.source ?? "live_database"}) •
+              updated {platformStats ? new Date(platformStats.generatedAt).toLocaleString() : " ..."}
+            </p>
           </div>
         </section>
 

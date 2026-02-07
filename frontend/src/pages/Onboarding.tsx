@@ -24,6 +24,25 @@ const interests = [
 
 type AuthMode = "register" | "login";
 
+function isAcademicEmail(email: string) {
+  const normalized = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    return false;
+  }
+
+  const domain = normalized.split("@")[1] ?? "";
+  if (!domain) {
+    return false;
+  }
+
+  return (
+    domain.endsWith(".edu") ||
+    /\.edu\.[a-z]{2,3}$/i.test(domain) ||
+    /\.ac\.[a-z]{2,3}$/i.test(domain) ||
+    /\.uni\.[a-z]{2,3}$/i.test(domain)
+  );
+}
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -60,14 +79,13 @@ export default function Onboarding() {
   };
 
   const normalizedEmail = schoolEmail.trim().toLowerCase();
-  const validEmail =
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) &&
-    /\.(edu|ac\.[a-z]{2,3})$/i.test(normalizedEmail);
+  const validEmail = isAcademicEmail(normalizedEmail);
   const validPassword = password.length >= 12;
-  const validCredentials = validEmail && validPassword;
+  const validRegistrationCredentials = validEmail && validPassword;
+  const validLoginCredentials = validEmail && password.length > 0;
 
   const canAdvance = () => {
-    if (step === 1) return validCredentials && password === confirmPassword;
+    if (step === 1) return validRegistrationCredentials && password === confirmPassword;
     if (step === 2) return Boolean(university.trim()) && Boolean(gradYear.trim());
     if (step === 3) return selectedInterests.length > 0;
     return true;
@@ -84,8 +102,8 @@ export default function Onboarding() {
   }, []);
 
   const handleLogin = async () => {
-    if (!validCredentials) {
-      setAuthError("Enter a valid school email and password.");
+    if (!validLoginCredentials) {
+      setAuthError("Enter a valid academic email and your password.");
       return;
     }
 
@@ -106,8 +124,8 @@ export default function Onboarding() {
   };
 
   const handleRegister = async () => {
-    if (!validCredentials) {
-      setAuthError("Enter a valid school email and a strong password.");
+    if (!validRegistrationCredentials) {
+      setAuthError("Enter a valid academic email and a strong password.");
       return;
     }
     if (password !== confirmPassword) {
@@ -206,7 +224,7 @@ export default function Onboarding() {
       <div className="mb-6">
         <h2 className="mb-3 font-display text-2xl font-semibold text-white">Secure Your Account</h2>
         <p className="text-sm text-slate-400">
-          Use your school email and a strong password (12+ characters).
+          Use your academic email (including `.edu`, `.edu.xx`, `.ac.xx`, `.uni.xx`) and a strong password (12+ characters).
         </p>
       </div>
 
@@ -215,7 +233,7 @@ export default function Onboarding() {
           <label className="mb-2 block text-sm font-medium text-slate-200">School Email</label>
           <input
             type="email"
-            placeholder="you@school.edu"
+            placeholder="you@university.edu"
             value={schoolEmail}
             onChange={(event) => setSchoolEmail(event.target.value)}
             className="w-full rounded-xl border border-slate-600/75 bg-slate-900/55 px-4 py-3 text-white placeholder-slate-400 transition-colors focus:border-amber-500/60 focus:outline-none"
@@ -403,21 +421,21 @@ export default function Onboarding() {
       </div>
 
       <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
-        <div className="w-full max-w-lg">
+        <div className="w-full max-w-3xl">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 text-center"
+            className="mb-5 text-center"
           >
-            <span className="font-display text-2xl font-bold tracking-tight text-white">agoriai</span>
+            <span className="font-display text-4xl font-bold tracking-tight text-white md:text-5xl">agoriai</span>
           </motion.div>
 
-          <div className="mb-5 flex items-center justify-center gap-2 rounded-xl bg-slate-900/60 p-1.5">
+          <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl border border-slate-700/70 bg-slate-900/70 p-2 backdrop-blur-sm">
             <button
               onClick={() => resetFlow("register")}
-              className={`cursor-pointer rounded-lg px-4 py-2 text-sm transition-colors ${
+              className={`cursor-pointer rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
                 mode === "register"
-                  ? "bg-amber-500 text-slate-900"
+                  ? "bg-amber-500 text-slate-900 shadow-sm shadow-amber-500/20"
                   : "text-slate-300 hover:bg-slate-800/80"
               }`}
             >
@@ -425,9 +443,9 @@ export default function Onboarding() {
             </button>
             <button
               onClick={() => resetFlow("login")}
-              className={`cursor-pointer rounded-lg px-4 py-2 text-sm transition-colors ${
+              className={`cursor-pointer rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
                 mode === "login"
-                  ? "bg-amber-500 text-slate-900"
+                  ? "bg-amber-500 text-slate-900 shadow-sm shadow-amber-500/20"
                   : "text-slate-300 hover:bg-slate-800/80"
               }`}
             >
@@ -454,7 +472,7 @@ export default function Onboarding() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="flex min-h-[520px] flex-col rounded-2xl border border-slate-700/70 bg-slate-900/78 p-8 shadow-[0_16px_44px_rgba(2,6,23,0.52)] backdrop-blur-md"
+                className="flex min-h-[520px] flex-col rounded-3xl border border-slate-600/80 bg-slate-900/82 p-8 shadow-[0_18px_48px_rgba(2,6,23,0.58)] backdrop-blur-md"
               >
                 <AnimatePresence mode="wait" custom={direction}>
                   {registerSteps[step]}
@@ -467,17 +485,17 @@ export default function Onboarding() {
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-slate-700/70 bg-slate-900/78 p-8 shadow-[0_16px_44px_rgba(2,6,23,0.52)] backdrop-blur-md"
+              className="rounded-3xl border border-slate-600/80 bg-slate-900/82 p-8 shadow-[0_18px_48px_rgba(2,6,23,0.58)] backdrop-blur-md"
             >
               <h2 className="mb-2 font-display text-2xl font-semibold text-white">Welcome back</h2>
-              <p className="mb-6 text-sm text-slate-400">Sign in with your school email and password.</p>
+              <p className="mb-6 text-sm text-slate-400">Sign in with your academic email and password.</p>
 
               <div className="space-y-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-200">School Email</label>
                   <input
                     type="email"
-                    placeholder="you@school.edu"
+                    placeholder="you@university.edu"
                     value={schoolEmail}
                     onChange={(event) => setSchoolEmail(event.target.value)}
                     className="w-full rounded-xl border border-slate-600/75 bg-slate-900/55 px-4 py-3 text-white placeholder-slate-400 transition-colors focus:border-amber-500/60 focus:outline-none"
@@ -497,7 +515,7 @@ export default function Onboarding() {
 
               <Button
                 onClick={handleLogin}
-                disabled={submitting || !validCredentials}
+                disabled={submitting || !validLoginCredentials}
                 className="mt-6 w-full bg-amber-500 text-slate-900 hover:bg-amber-400 disabled:opacity-60"
               >
                 {submitting ? "Signing in..." : "Sign in"}

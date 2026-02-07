@@ -6,6 +6,7 @@ import type {
   Conversation,
   GraphData,
   Message,
+  PlatformStats,
   Post,
   User,
 } from "../types";
@@ -37,7 +38,12 @@ export const agoraApi = {
 
   logout: () => api.post<{ ok: boolean }>("/auth/logout", {}),
 
+  deleteAccount: (payload: { password: string }) =>
+    api.post<{ ok: boolean }>("/auth/delete-account", payload),
+
   getCurrentUser: () => api.get<User>("/users/me"),
+
+  getPlatformStats: () => api.get<PlatformStats>("/stats/platform"),
 
   getUser: (id: string) => api.get<User>(`/users/${id}`),
 

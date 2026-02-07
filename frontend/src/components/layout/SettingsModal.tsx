@@ -1,9 +1,23 @@
-import { Moon, Sun, Bell, User, Check, Eye, EyeOff, GraduationCap, Briefcase } from "lucide-react";
+import { useState } from "react";
+import {
+  Moon,
+  Sun,
+  Bell,
+  User,
+  Check,
+  Eye,
+  EyeOff,
+  GraduationCap,
+  Briefcase,
+  LogOut,
+  Trash2,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useUIStore } from "../../stores/uiStore";
 import { useAuthStore, visibilityLabels, visibilityDescriptions, type VisibilityLevel } from "../../stores/authStore";
 import { Modal } from "../ui/Modal";
+import { agoraApi } from "../../services/agoraApi";
 
 const visibilityLevels: { level: VisibilityLevel; icon: typeof Eye }[] = [
   { level: "anonymous", icon: EyeOff },
@@ -21,8 +35,12 @@ export function SettingsModal() {
     notificationsEnabled,
     toggleNotificationsEnabled,
   } = useUIStore();
-  const { user, visibilityLevel, setVisibilityLevel } = useAuthStore();
+  const { user, visibilityLevel, setVisibilityLevel, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [accountMessage, setAccountMessage] = useState<string | null>(null);
 
   if (activeModal !== "settings") return null;
 
@@ -30,6 +48,41 @@ export function SettingsModal() {
     if (!user) return;
     setActiveModal(null);
     navigate(`/profile/${user.id}`);
+  };
+
+  const handleSignOut = async () => {
+    setAccountMessage(null);
+    setIsSubmitting(true);
+    try {
+      await agoraApi.logout();
+    } catch (error) {
+      console.error("Failed to logout gracefully", error);
+    } finally {
+      logout();
+      setActiveModal(null);
+      navigate("/");
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      setAccountMessage("Enter your password to confirm account deletion.");
+      return;
+    }
+
+    setAccountMessage(null);
+    setIsSubmitting(true);
+    try {
+      await agoraApi.deleteAccount({ password: deletePassword });
+      logout();
+      setActiveModal(null);
+      navigate("/");
+    } catch (error) {
+      setAccountMessage(error instanceof Error ? error.message : "Failed to delete account.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -165,6 +218,68 @@ export function SettingsModal() {
             >
               Open Profile
             </button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-xl mosaic-surface">
+            <div className="flex items-center gap-3">
+              <LogOut size={20} className="text-slate-500" />
+              <div>
+                <p className="font-medium text-slate-900 dark:text-white">Session</p>
+                <p className="text-sm text-slate-500">Sign out of your current account</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                void handleSignOut();
+              }}
+              disabled={isSubmitting}
+              className="px-3 py-1.5 text-sm font-medium text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-60"
+            >
+              Sign out
+            </button>
+          </div>
+
+          <div className="p-4 rounded-xl border border-rose-200/60 dark:border-rose-500/30 bg-rose-50/60 dark:bg-rose-500/10">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Trash2 size={20} className="text-rose-500" />
+                <div>
+                  <p className="font-medium text-rose-700 dark:text-rose-300">Delete account</p>
+                  <p className="text-sm text-rose-600/85 dark:text-rose-300/80">
+                    Permanently removes your account, posts, comments, and messages.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDeleteConfirm((prev) => !prev)}
+                className="px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer dark:text-rose-300"
+              >
+                {showDeleteConfirm ? "Cancel" : "Delete"}
+              </button>
+            </div>
+
+            {showDeleteConfirm && (
+              <div className="mt-3 space-y-3">
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(event) => setDeletePassword(event.target.value)}
+                  placeholder="Enter password to confirm"
+                  className="w-full rounded-xl border border-rose-300/70 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-500 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20 dark:border-rose-500/50 dark:bg-slate-900 dark:text-white"
+                />
+                <button
+                  onClick={() => {
+                    void handleDeleteAccount();
+                  }}
+                  disabled={isSubmitting}
+                  className="w-full rounded-xl bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-500 disabled:opacity-60"
+                >
+                  Permanently delete account
+                </button>
+              </div>
+            )}
+
+            {accountMessage && <p className="mt-3 text-xs text-rose-600 dark:text-rose-300">{accountMessage}</p>}
           </div>
         </div>
 
