@@ -56,15 +56,19 @@ export default function Feed() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <PostComposer onSubmit={handleCreatePost} />
-      <FilterBar
-        activeFilter={filter}
-        onFilterChange={setFilter}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
+      <div data-tutorial="feed-composer">
+        <PostComposer onSubmit={handleCreatePost} />
+      </div>
+      <div data-tutorial="feed-filters">
+        <FilterBar
+          activeFilter={filter}
+          onFilterChange={setFilter}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+      </div>
 
       <div className="space-y-4">
         {isLoading ? (

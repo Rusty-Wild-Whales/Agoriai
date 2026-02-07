@@ -8,16 +8,20 @@ import { NotificationsPanel } from "./NotificationsPanel";
 import { useUIStore } from "../../stores/uiStore";
 
 export function AppLayout() {
-  const { sidebarOpen } = useUIStore();
+  const { sidebarOpen, darkMode } = useUIStore();
   const location = useLocation();
 
-  // Always apply dark mode for the app
+  // Sync dark mode class with store state
   useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [darkMode]);
 
   return (
-    <div className="min-h-screen bg-slate-950 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
       <Sidebar />
       <motion.div
         animate={{ marginLeft: sidebarOpen ? 240 : 72 }}

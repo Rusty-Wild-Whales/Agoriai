@@ -276,7 +276,7 @@ export default function Nexus() {
   }
 
   return (
-    <div ref={containerRef} className="relative h-[calc(100vh-8rem)] bg-slate-900 dark:bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
+    <div ref={containerRef} data-tutorial="nexus-graph" className="relative h-[calc(100vh-8rem)] bg-slate-900 dark:bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
       <svg
         ref={svgRef}
         className="w-full h-full"

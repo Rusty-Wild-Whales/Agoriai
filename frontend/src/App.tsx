@@ -49,8 +49,8 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <DarkModeSync>
         <AuthInitializer>
-          <TutorialProvider>
-            <BrowserRouter>
+          <BrowserRouter>
+            <TutorialProvider>
               <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/onboarding" element={<Onboarding />} />
@@ -63,8 +63,8 @@ export default function App() {
                   <Route path="/messages" element={<Messages />} />
                 </Route>
               </Routes>
-            </BrowserRouter>
-          </TutorialProvider>
+            </TutorialProvider>
+          </BrowserRouter>
         </AuthInitializer>
       </DarkModeSync>
     </QueryClientProvider>

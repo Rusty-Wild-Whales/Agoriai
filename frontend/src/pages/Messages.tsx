@@ -47,10 +47,8 @@ export default function Messages() {
   useEffect(() => {
     if (!activeConvId) return;
     mockApi.getMessages(activeConvId).then((msgs) => {
-      // Check if there's a revealed identity for this conversation
       const revealInfo = revealedIdentities[activeConvId];
       if (revealInfo) {
-        // Insert system message after appropriate timestamp
         const chatMessages: ChatMessage[] = [...msgs];
         const systemMsg: SystemMessage = {
           id: `sys-${activeConvId}`,
@@ -60,7 +58,6 @@ export default function Messages() {
           createdAt: revealInfo.timestamp,
         };
 
-        // Find where to insert based on timestamp
         const insertIndex = chatMessages.findIndex(
           (m) => new Date(m.createdAt) > new Date(revealInfo.timestamp)
         );
@@ -85,7 +82,6 @@ export default function Messages() {
     (p) => p.userId !== currentUserId
   );
 
-  // Check if current user has revealed identity in this conversation
   const hasRevealedIdentity = activeConvId ? !!revealedIdentities[activeConvId] : false;
 
   const handleSend = async () => {
@@ -105,14 +101,12 @@ export default function Messages() {
   const handleRevealIdentity = () => {
     if (!activeConvId) return;
 
-    // Store the reveal
     const timestamp = new Date().toISOString();
     setRevealedIdentities((prev) => ({
       ...prev,
       [activeConvId]: { name: currentUserRealName, timestamp },
     }));
 
-    // Add system message to current messages
     const systemMsg: SystemMessage = {
       id: `sys-${Date.now()}`,
       type: "identity-reveal",
@@ -128,17 +122,17 @@ export default function Messages() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-        <p className="text-neutral-400">Loading conversations...</p>
+        <p className="text-slate-400">Loading conversations...</p>
       </div>
     );
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+    <div data-tutorial="messages-panel" className="h-[calc(100vh-8rem)] flex bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
       {/* Conversation List */}
-      <div className="w-80 border-r border-neutral-200 dark:border-neutral-700 flex flex-col shrink-0">
-        <div className="p-4 border-b border-neutral-100 dark:border-neutral-800">
-          <h2 className="font-display font-semibold text-primary-900 dark:text-white">
+      <div className="w-80 border-r border-slate-200 dark:border-slate-700 flex flex-col shrink-0">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+          <h2 className="font-display font-semibold text-slate-900 dark:text-white">
             Messages
           </h2>
         </div>
@@ -154,7 +148,7 @@ export default function Messages() {
                 key={conv.id}
                 onClick={() => setActiveConvId(conv.id)}
                 className={`w-full flex items-center gap-3 p-4 text-left transition-colors cursor-pointer ${
-                  isActive ? "bg-primary-50 dark:bg-primary-900/30" : "hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                  isActive ? "bg-slate-100 dark:bg-slate-800/60" : "hover:bg-slate-50 dark:hover:bg-slate-800/30"
                 }`}
               >
                 <div className="relative">
@@ -166,14 +160,14 @@ export default function Messages() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-primary-900 dark:text-white truncate">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                     {other?.alias || "Unknown"}
                   </p>
-                  <p className="text-xs text-neutral-400 truncate">
+                  <p className="text-xs text-slate-400 truncate">
                     {conv.lastMessage?.content}
                   </p>
                 </div>
-                <span className="text-xs text-neutral-400 shrink-0">
+                <span className="text-xs text-slate-400 shrink-0">
                   {conv.lastMessage
                     ? formatDate(conv.lastMessage.createdAt)
                     : ""}
@@ -189,7 +183,7 @@ export default function Messages() {
         {activeConv ? (
           <>
             {/* Chat header */}
-            <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <Avatar
@@ -198,10 +192,10 @@ export default function Messages() {
                   />
                 </div>
                 <div>
-                  <p className="font-medium text-primary-900 dark:text-white">
+                  <p className="font-medium text-slate-900 dark:text-white">
                     {otherParticipant?.alias}
                   </p>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-slate-400">
                     {otherParticipant?.isAnonymous
                       ? "Anonymous"
                       : "Identity revealed"}
@@ -226,7 +220,7 @@ export default function Messages() {
 
             {/* Anonymous banner */}
             {otherParticipant?.isAnonymous && !hasRevealedIdentity && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-primary-50 dark:bg-primary-900/30 text-xs text-primary-700 dark:text-primary-300">
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-600 dark:text-slate-300">
                 <AlertCircle size={14} />
                 You are both anonymous in this conversation. You can choose to
                 reveal your identity at any time.
@@ -236,7 +230,6 @@ export default function Messages() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {messages.map((msg) => {
-                // System message for identity reveal
                 if (isSystemMessage(msg)) {
                   return (
                     <motion.div
@@ -250,7 +243,7 @@ export default function Messages() {
                         <span className="text-sm text-green-700 dark:text-green-400">
                           <span className="font-semibold">{msg.userName}</span> revealed their identity
                         </span>
-                        <span className="text-xs text-green-500 dark:text-green-500">
+                        <span className="text-xs text-green-500">
                           {formatDate(msg.createdAt)}
                         </span>
                       </div>
@@ -259,7 +252,6 @@ export default function Messages() {
                 }
 
                 const isMine = msg.senderId === currentUserId;
-                // Show real name if identity was revealed before this message
                 const revealInfo = activeConvId ? revealedIdentities[activeConvId] : null;
                 const showRealName = isMine && revealInfo && new Date(msg.createdAt) >= new Date(revealInfo.timestamp);
 
@@ -275,8 +267,7 @@ export default function Messages() {
                         <Avatar seed={msg.senderAlias} size="sm" />
                       )}
                       <div>
-                        {/* Show sender name with identity indicator */}
-                        <p className={`text-xs mb-1 ${isMine ? "text-right" : "text-left"} text-neutral-400`}>
+                        <p className={`text-xs mb-1 ${isMine ? "text-right" : "text-left"} text-slate-400`}>
                           {isMine ? (
                             showRealName ? (
                               <span className="flex items-center gap-1 justify-end">
@@ -293,14 +284,14 @@ export default function Messages() {
                         <div
                           className={`px-4 py-2.5 rounded-2xl text-sm ${
                             isMine
-                              ? "bg-primary-900 dark:bg-primary-700 text-white rounded-br-md"
-                              : "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded-bl-md"
+                              ? "bg-amber-500 text-slate-900 rounded-br-md"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-md"
                           }`}
                         >
                           <p>{msg.content}</p>
                         </div>
                         <p
-                          className={`text-xs mt-1 ${isMine ? "text-right text-primary-300" : "text-neutral-400"}`}
+                          className={`text-xs mt-1 ${isMine ? "text-right text-slate-400" : "text-slate-400"}`}
                         >
                           {formatDate(msg.createdAt)}
                         </p>
@@ -319,7 +310,7 @@ export default function Messages() {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-neutral-100 dark:border-neutral-800">
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800">
               <div className="flex gap-3">
                 <input
                   type="text"
@@ -327,7 +318,7 @@ export default function Messages() {
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Type a message..."
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                 />
                 <Button onClick={handleSend} disabled={!newMessage.trim()}>
                   <Send size={16} />
@@ -337,7 +328,7 @@ export default function Messages() {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-neutral-400">Select a conversation</p>
+            <p className="text-slate-400">Select a conversation</p>
           </div>
         )}
       </div>
@@ -363,12 +354,12 @@ export default function Messages() {
             </div>
           </div>
 
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
             Once you reveal your identity, <span className="font-medium">{otherParticipant?.alias}</span> will see
-            your real name: <span className="font-semibold text-primary-900 dark:text-white">{currentUserRealName}</span>.
+            your real name: <span className="font-semibold text-slate-900 dark:text-white">{currentUserRealName}</span>.
           </p>
 
-          <p className="text-sm text-neutral-500 dark:text-neutral-500">
+          <p className="text-sm text-slate-500">
             This is a meaningful moment. Only reveal when you feel genuine trust
             has been established.
           </p>

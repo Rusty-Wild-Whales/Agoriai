@@ -34,7 +34,7 @@ export function FilterBar({
   onSearchChange,
 }: FilterBarProps) {
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 space-y-3">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         {categories.map((cat) => (
           <button
@@ -42,8 +42,8 @@ export function FilterBar({
             onClick={() => onFilterChange(cat.value)}
             className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer ${
               activeFilter === cat.value
-                ? "bg-primary-900 dark:bg-primary-700 text-white"
-                : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                ? "bg-slate-900 dark:bg-slate-700 text-white"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
             }`}
           >
             {cat.label}
@@ -62,7 +62,7 @@ export function FilterBar({
         <select
           value={sortBy}
           onChange={(e) => onSortChange(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 text-sm text-neutral-700 dark:text-neutral-300 bg-white dark:bg-neutral-800 cursor-pointer"
+          className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 cursor-pointer"
         >
           {sortOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>

@@ -25,16 +25,16 @@ export function Card({
 
   return (
     <Comp
-      className={`bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-sm transition-shadow ${onClick ? "cursor-pointer" : ""} ${className}`}
+      className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm transition-shadow ${onClick ? "cursor-pointer" : ""} ${className}`}
       onClick={onClick}
       {...hoverProps}
     >
       {header && (
-        <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-800">{header}</div>
+        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">{header}</div>
       )}
       <div className="px-5 py-4">{children}</div>
       {footer && (
-        <div className="px-5 py-3 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 rounded-b-xl">
+        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 rounded-b-xl">
           {footer}
         </div>
       )}

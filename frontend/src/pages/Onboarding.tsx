@@ -1,10 +1,11 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { RefreshCw, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Avatar } from "../components/ui/Avatar";
 import { generateAnonName } from "../utils/helpers";
+import { StarField } from "./Landing";
 
 const interests = [
   "Software Engineering",
@@ -18,45 +19,6 @@ const interests = [
   "Research",
   "Entrepreneurship",
 ];
-
-// Optimized CSS-based star field
-function StarField() {
-  const stars = useMemo(() => {
-    const result = [];
-    for (let i = 0; i < 80; i++) {
-      result.push({
-        id: i,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 2 + 1,
-        opacity: Math.random() * 0.4 + 0.2,
-        delay: Math.random() * 5,
-        duration: Math.random() * 3 + 4,
-      });
-    }
-    return result;
-  }, []);
-
-  return (
-    <div className="fixed inset-0 overflow-hidden bg-[#0a1628]">
-      {stars.map((star) => (
-        <div
-          key={star.id}
-          className="absolute rounded-full bg-slate-400 animate-pulse"
-          style={{
-            left: `${star.x}%`,
-            top: `${star.y}%`,
-            width: star.size,
-            height: star.size,
-            opacity: star.opacity,
-            animationDelay: `${star.delay}s`,
-            animationDuration: `${star.duration}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -293,7 +255,9 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <StarField />
+      <div className="fixed inset-0 overflow-hidden bg-[#060e1b]">
+        <StarField />
+      </div>
 
       <div className="relative z-10 min-h-screen flex items-center justify-center p-6">
         <div className="w-full max-w-lg">

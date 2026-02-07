@@ -7,8 +7,8 @@ interface BadgeProps {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default: "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300",
-  accent: "bg-accent-100 dark:bg-accent-900/40 text-accent-700 dark:text-accent-400",
+  default: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
+  accent: "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400",
   success: "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400",
   warning: "bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400",
 };

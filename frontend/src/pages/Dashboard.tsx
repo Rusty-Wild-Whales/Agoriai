@@ -49,16 +49,16 @@ function AnimatedCounter({ value, label, icon: Icon, accent = false }: { value: 
       className={`text-center p-5 rounded-xl border transition-all ${
         accent
           ? "bg-amber-500/10 border-amber-500/30"
-          : "bg-slate-800/50 border-slate-700/50 hover:border-slate-600/50"
+          : "bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-slate-600/50"
       }`}
     >
-      <div className={`p-2.5 rounded-xl mx-auto mb-3 w-fit ${accent ? "bg-amber-500/20" : "bg-slate-700/50"}`}>
+      <div className={`p-2.5 rounded-xl mx-auto mb-3 w-fit ${accent ? "bg-amber-500/20" : "bg-slate-100 dark:bg-slate-700/50"}`}>
         <Icon
           size={20}
-          className={accent ? "text-amber-400" : "text-slate-400"}
+          className={accent ? "text-amber-400" : "text-slate-500 dark:text-slate-400"}
         />
       </div>
-      <p className={`text-3xl font-display font-bold ${accent ? "text-amber-400" : "text-white"}`}>
+      <p className={`text-3xl font-display font-bold ${accent ? "text-amber-400" : "text-slate-900 dark:text-white"}`}>
         {count}
       </p>
       <p className="text-xs text-slate-500 mt-1">{label}</p>
@@ -93,7 +93,7 @@ export default function Dashboard() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-slate-800/80 to-slate-900 p-6 border border-slate-700/50"
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 via-slate-50 to-white dark:from-slate-800 dark:via-slate-800/80 dark:to-slate-900 p-6 border border-slate-200 dark:border-slate-700/50"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-slate-500/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
@@ -104,10 +104,10 @@ export default function Dashboard() {
                 <Sparkles size={28} className="text-amber-400" />
               </div>
               <div>
-                <h2 className="font-display text-xl font-semibold mb-1 text-white">
+                <h2 className="font-display text-xl font-semibold mb-1 text-slate-900 dark:text-white">
                   Welcome to Agoriai, {user?.anonAlias || "Explorer"}!
                 </h2>
-                <p className="text-slate-400 text-sm">
+                <p className="text-slate-500 dark:text-slate-400 text-sm">
                   New here? Take a quick tour to learn how to make the most of the platform.
                 </p>
               </div>
@@ -125,7 +125,7 @@ export default function Dashboard() {
 
       {/* Welcome */}
       <div>
-        <h2 className="font-display text-2xl font-semibold text-white">
+        <h2 className="font-display text-2xl font-semibold text-slate-900 dark:text-white">
           {showWelcomeBanner ? "Your Dashboard" : `Welcome back, ${user?.anonAlias || "Explorer"}`}
         </h2>
         <p className="text-slate-500 mt-1">
@@ -152,12 +152,12 @@ export default function Dashboard() {
           </Button>
         </Link>
         <Link to="/feed">
-          <Button variant="secondary" className="bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300">
+          <Button variant="secondary" className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
             <HelpCircle size={16} /> Ask a Question
           </Button>
         </Link>
         <Link to="/nexus">
-          <Button variant="secondary" className="bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300">
+          <Button variant="secondary" className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
             <Network size={16} /> Explore the Nexus
           </Button>
         </Link>
@@ -165,22 +165,22 @@ export default function Dashboard() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-700/50 flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-slate-700/50">
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/50">
               <FileText size={14} className="text-slate-400" />
             </div>
-            <h3 className="font-display font-semibold text-white">Recent Activity</h3>
+            <h3 className="font-display font-semibold text-slate-900 dark:text-white">Recent Activity</h3>
           </div>
           <div className="p-3 space-y-1">
             {recentPosts.map((post) => (
               <Link
                 key={post.id}
                 to="/feed"
-                className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-700/30 transition-colors"
+                className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                     {post.title}
                   </p>
                   <div className="flex items-center gap-2 mt-1.5">
@@ -190,7 +190,7 @@ export default function Dashboard() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-slate-500 bg-slate-700/50 px-2 py-1 rounded-full">
+                <div className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 dark:bg-slate-700/50 px-2 py-1 rounded-full">
                   <ThumbsUp size={12} /> {post.upvotes}
                 </div>
               </Link>
@@ -199,29 +199,29 @@ export default function Dashboard() {
         </div>
 
         {/* Trending */}
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-700/50 flex items-center gap-2">
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700/50 flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-amber-500/20">
               <TrendingUp size={14} className="text-amber-400" />
             </div>
-            <h3 className="font-display font-semibold text-white">Trending on the Agora</h3>
+            <h3 className="font-display font-semibold text-slate-900 dark:text-white">Trending on the Agora</h3>
           </div>
           <div className="p-3 space-y-1">
             {trendingPosts.map((post, i) => (
               <Link
                 key={post.id}
                 to="/feed"
-                className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-700/30 transition-colors"
+                className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors"
               >
                 <span className={`flex items-center justify-center w-7 h-7 rounded-lg text-sm font-display font-bold shrink-0 ${
                   i < 3
                     ? "bg-amber-500/20 text-amber-400"
-                    : "bg-slate-700/50 text-slate-500"
+                    : "bg-slate-100 dark:bg-slate-700/50 text-slate-500"
                 }`}>
                   {i + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                     {post.title}
                   </p>
                   <div className="flex items-center gap-2 mt-1">

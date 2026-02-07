@@ -67,7 +67,7 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
   return (
     <motion.div
       layout
-      className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl overflow-hidden shadow-sm"
+      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm"
     >
       {/* Collapsed State - Inviting CTA */}
       <AnimatePresence mode="wait">
@@ -78,15 +78,15 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setOpen(true)}
-            className="w-full flex items-center gap-4 p-4 text-left cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors group"
+            className="w-full flex items-center gap-4 p-4 text-left cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
           >
             <Avatar seed={user?.anonAvatarSeed || "default"} size="md" />
             <div className="flex-1">
-              <p className="text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-600 dark:group-hover:text-neutral-400 transition-colors">
+              <p className="text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors">
                 Share your experience, ask a question, or help others...
               </p>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-accent-500 hover:bg-accent-600 text-primary-900 rounded-lg font-medium text-sm transition-colors">
+            <div className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg font-medium text-sm transition-colors">
               <PenSquare size={16} />
               <span>New Post</span>
             </div>
@@ -99,14 +99,14 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
             exit={{ opacity: 0 }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-neutral-100 dark:border-neutral-800">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
-                <Sparkles size={18} className="text-accent-500" />
-                <h3 className="font-semibold text-primary-900 dark:text-white">Create a Post</h3>
+                <Sparkles size={18} className="text-amber-500" />
+                <h3 className="font-semibold text-slate-900 dark:text-white">Create a Post</h3>
               </div>
               <button
                 onClick={() => setOpen(false)}
-                className="p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer"
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -115,7 +115,7 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
             <div className="p-4 space-y-4">
               {/* Category Selection */}
               <div>
-                <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wide">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">
                   What are you sharing?
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -125,8 +125,8 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
                       onClick={() => setCategory(cat.value)}
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                         category === cat.value
-                          ? "bg-primary-900 dark:bg-primary-700 text-white shadow-sm"
-                          : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                          ? "bg-slate-900 dark:bg-slate-700 text-white shadow-sm"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
                       }`}
                     >
                       <span>{cat.icon}</span>
@@ -181,7 +181,7 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
                         {tag}
                         <button
                           onClick={() => removeTag(tag)}
-                          className="ml-1 text-neutral-400 hover:text-neutral-600 cursor-pointer"
+                          className="ml-1 text-slate-400 hover:text-slate-600 cursor-pointer"
                         >
                           ×
                         </button>
@@ -192,12 +192,12 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between pt-3 border-t border-neutral-100 dark:border-neutral-800">
-                <div className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                   {isAnonymous ? <EyeOff size={16} /> : <Eye size={16} />}
                   <span>
                     Posting as{" "}
-                    <span className="font-medium text-primary-700 dark:text-primary-400">
+                    <span className="font-medium text-slate-700 dark:text-slate-400">
                       {getDisplayName()}
                     </span>
                     {!isAnonymous && (
@@ -226,7 +226,7 @@ export function CreatePostFAB({ onClick }: { onClick: () => void }) {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className="fixed bottom-6 right-6 w-14 h-14 bg-accent-500 hover:bg-accent-600 text-primary-900 rounded-full shadow-lg flex items-center justify-center cursor-pointer z-30 md:hidden"
+      className="fixed bottom-6 right-6 w-14 h-14 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-full shadow-lg flex items-center justify-center cursor-pointer z-30 md:hidden"
     >
       <PenSquare size={24} />
     </motion.button>

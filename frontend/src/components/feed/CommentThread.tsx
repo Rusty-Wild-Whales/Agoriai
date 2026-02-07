@@ -36,21 +36,21 @@ function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (conten
         <Avatar seed={comment.authorAlias} size="sm" />
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-primary-900 dark:text-white">
+            <span className="text-sm font-medium text-slate-900 dark:text-white">
               {comment.authorAlias}
             </span>
-            <span className="text-xs text-neutral-400">
+            <span className="text-xs text-slate-400">
               {formatDate(comment.createdAt)}
             </span>
           </div>
-          <p className="text-sm text-neutral-700 dark:text-neutral-300 mt-1 leading-relaxed">
+          <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">
             {comment.content}
           </p>
           <div className="flex items-center gap-3 mt-2">
             <button
               onClick={handleUpvote}
               className={`flex items-center gap-1 text-xs transition-colors cursor-pointer ${
-                upvoted ? "text-accent-500" : "text-neutral-400 hover:text-accent-500"
+                upvoted ? "text-amber-500" : "text-slate-400 hover:text-amber-500"
               }`}
             >
               <ThumbsUp size={12} fill={upvoted ? "currentColor" : "none"} />
@@ -58,7 +58,7 @@ function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (conten
             </button>
             <button
               onClick={() => setShowReplyInput(!showReplyInput)}
-              className="flex items-center gap-1 text-xs text-neutral-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-500 dark:hover:text-slate-400 transition-colors cursor-pointer"
             >
               <Reply size={12} />
               Reply
@@ -74,7 +74,7 @@ function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (conten
                 onChange={(e) => setReplyText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleReplySubmit()}
                 placeholder="Write a reply..."
-                className="flex-1 px-3 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
+                className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
               />
               <Button size="sm" onClick={handleReplySubmit} disabled={!replyText.trim()}>
                 Reply
@@ -86,23 +86,23 @@ function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (conten
 
       {/* Replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="ml-11 space-y-3 border-l-2 border-neutral-200 dark:border-neutral-700 pl-4">
+        <div className="ml-11 space-y-3 border-l-2 border-slate-200 dark:border-slate-700 pl-4">
           {comment.replies.map((reply) => (
             <div key={reply.id} className="flex gap-3">
               <Avatar seed={reply.authorAlias} size="sm" />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-primary-900 dark:text-white">
+                  <span className="text-sm font-medium text-slate-900 dark:text-white">
                     {reply.authorAlias}
                   </span>
-                  <span className="text-xs text-neutral-400">
+                  <span className="text-xs text-slate-400">
                     {formatDate(reply.createdAt)}
                   </span>
                 </div>
-                <p className="text-sm text-neutral-700 dark:text-neutral-300 mt-1">
+                <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">
                   {reply.content}
                 </p>
-                <button className="flex items-center gap-1 text-xs text-neutral-400 hover:text-accent-500 mt-1.5 transition-colors cursor-pointer">
+                <button className="flex items-center gap-1 text-xs text-slate-400 hover:text-amber-500 mt-1.5 transition-colors cursor-pointer">
                   <ThumbsUp size={12} /> {reply.upvotes}
                 </button>
               </div>
@@ -157,16 +157,16 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
         <div className="space-y-3">
           {[1, 2].map((i) => (
             <div key={i} className="flex gap-3 animate-pulse">
-              <div className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700" />
+              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700" />
               <div className="flex-1 space-y-2">
-                <div className="h-3 w-24 bg-neutral-200 dark:bg-neutral-700 rounded" />
-                <div className="h-3 w-full bg-neutral-200 dark:bg-neutral-700 rounded" />
+                <div className="h-3 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded" />
               </div>
             </div>
           ))}
         </div>
       ) : displayComments.length === 0 ? (
-        <p className="text-sm text-neutral-400 text-center py-4">
+        <p className="text-sm text-slate-400 text-center py-4">
           No comments yet. Be the first to respond.
         </p>
       ) : (
@@ -176,7 +176,7 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
       )}
 
       {/* Comment input */}
-      <div className="flex gap-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+      <div className="flex gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
         <Avatar seed={user?.anonAvatarSeed || "default"} size="sm" />
         <div className="flex-1 flex gap-2">
           <input
@@ -185,7 +185,7 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
             onChange={(e) => setNewComment(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSubmit()}
             placeholder="Add a comment..."
-            className="flex-1 px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
+            className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
           />
           <Button size="sm" onClick={handleSubmit} disabled={!newComment.trim()}>
             Comment

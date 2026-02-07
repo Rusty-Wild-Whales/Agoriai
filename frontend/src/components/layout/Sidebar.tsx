@@ -40,10 +40,10 @@ export function Sidebar() {
     <motion.aside
       animate={{ width: sidebarOpen ? 240 : 72 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="fixed left-0 top-0 h-screen bg-slate-900 text-white flex flex-col z-40"
+      className="fixed left-0 top-0 h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-white flex flex-col z-40 border-r border-slate-200/50 dark:border-transparent"
     >
       {/* Logo + Collapse button */}
-      <div className="flex items-center justify-between px-4 h-16 border-b border-slate-800/50">
+      <div className="flex items-center justify-between px-4 h-16 border-b border-slate-200/50 dark:border-slate-800/50">
         <AnimatePresence mode="wait">
           {sidebarOpen ? (
             <motion.span
@@ -51,7 +51,7 @@ export function Sidebar() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="font-display text-xl font-bold tracking-tight text-white"
+              className="font-display text-xl font-bold tracking-tight text-slate-900 dark:text-white"
             >
               agoriai
             </motion.span>
@@ -70,7 +70,7 @@ export function Sidebar() {
         {sidebarOpen && (
           <button
             onClick={() => setSidebarOpen(false)}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             title="Collapse sidebar"
           >
             <PanelLeftClose size={18} />
@@ -82,7 +82,7 @@ export function Sidebar() {
       {!sidebarOpen && (
         <button
           onClick={() => setSidebarOpen(true)}
-          className="mx-auto mt-3 p-2 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+          className="mx-auto mt-3 p-2 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           title="Expand sidebar"
         >
           <PanelLeft size={18} />
@@ -99,8 +99,8 @@ export function Sidebar() {
             className={({ isActive }) =>
               `relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                 isActive
-                  ? "bg-slate-800/80 text-white"
-                  : "text-slate-400 hover:bg-slate-800/50 hover:text-white"
+                  ? "bg-slate-100 dark:bg-slate-800/80 text-slate-900 dark:text-white"
+                  : "text-slate-500 dark:text-slate-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
               }`
             }
           >
@@ -136,7 +136,7 @@ export function Sidebar() {
       <button
         onClick={() => setActiveModal("settings")}
         data-tutorial="user-profile"
-        className="border-t border-slate-800/50 p-3 hover:bg-slate-800/40 transition-colors cursor-pointer text-left w-full"
+        className="border-t border-slate-200/50 dark:border-slate-800/50 p-3 hover:bg-slate-100/50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer text-left w-full"
       >
         <div className="flex items-center gap-3">
           <Avatar
@@ -151,7 +151,7 @@ export function Sidebar() {
                 exit={{ opacity: 0 }}
                 className="flex-1 min-w-0"
               >
-                <p className="text-sm font-medium text-white truncate">
+                <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
                   {getDisplayName()}
                 </p>
                 <div className="flex items-center gap-1 text-xs text-slate-500">
