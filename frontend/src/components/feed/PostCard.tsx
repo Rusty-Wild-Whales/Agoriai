@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ThumbsUp, ThumbsDown, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  ThumbsUp,
+  ThumbsDown,
+  MessageCircle,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { Avatar } from "../ui/Avatar";
 import { Badge } from "../ui/Badge";
 import type { Post, Comment } from "../../types";
@@ -33,6 +39,7 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
 
   const loadComments = async () => {
     if (comments.length > 0) return;
+
     setLoadingComments(true);
     try {
       const data = await mockApi.getComments(post.id);
@@ -45,152 +52,148 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
   };
 
   const toggleComments = () => {
-    const next = !showComments;
-    setShowComments(next);
-    if (next) {
+    const nextOpen = !showComments;
+    setShowComments(nextOpen);
+    if (nextOpen) {
       void loadComments();
     }
   };
 
   const handleUpvote = () => {
     if (upvoted) {
-      // Remove upvote
       setUpvoted(false);
-      setVoteCount((v) => v - 1);
-    } else {
-      // Add upvote, remove downvote if exists
-      setUpvoted(true);
-      if (downvoted) {
-        setDownvoted(false);
-        setVoteCount((v) => v + 2);
-        onUpvote(post.id);
-      } else {
-        setVoteCount((v) => v + 1);
-        onUpvote(post.id);
-      }
+      setVoteCount((value) => value - 1);
+      return;
     }
+
+    setUpvoted(true);
+    if (downvoted) {
+      setDownvoted(false);
+      setVoteCount((value) => value + 2);
+    } else {
+      setVoteCount((value) => value + 1);
+    }
+    onUpvote(post.id);
   };
 
   const handleDownvote = () => {
     if (downvoted) {
-      // Remove downvote
       setDownvoted(false);
-      setVoteCount((v) => v + 1);
+      setVoteCount((value) => value + 1);
+      return;
+    }
+
+    setDownvoted(true);
+    if (upvoted) {
+      setUpvoted(false);
+      setVoteCount((value) => value - 2);
     } else {
-      // Add downvote, remove upvote if exists
-      setDownvoted(true);
-      if (upvoted) {
-        setUpvoted(false);
-        setVoteCount((v) => v - 2);
-      } else {
-        setVoteCount((v) => v - 1);
-      }
+      setVoteCount((value) => value - 1);
     }
   };
 
   const contentPreview =
     post.content.length > 200 && !showFullContent
-      ? post.content.slice(0, 200) + "..."
+      ? `${post.content.slice(0, 200)}...`
       : post.content;
 
   return (
-    <motion.div
-      layout
-      className="mosaic-surface-strong rounded-2xl overflow-hidden hover:shadow-md transition-shadow"
-    >
-      <div className="p-5">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-3">
+    <motion.article layout className="mosaic-surface-strong overflow-hidden rounded-2xl">
+      <div className="p-4 md:p-5">
+        <header className="mb-3 flex items-center gap-3">
           <Avatar seed={post.authorAvatarSeed} size="sm" />
           <div>
-            <p className="text-sm font-medium text-slate-900 dark:text-white">
-              {post.authorAlias}
-            </p>
-            <p className="text-xs text-slate-400">{formatDate(post.createdAt)}</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-white">{post.authorAlias}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(post.createdAt)}</p>
           </div>
           <Badge variant={categoryVariants[post.category] || "default"} className="ml-auto">
             {categoryLabel(post.category)}
           </Badge>
-        </div>
+        </header>
 
-        {/* Title */}
-        <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-white mb-2">
-          {post.title}
-        </h3>
+        <h3 className="mb-2 font-display text-xl font-semibold text-slate-900 dark:text-white">{post.title}</h3>
 
-        {/* Content */}
-        <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+        <div className="whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-300">
           {contentPreview}
         </div>
+
         {post.content.length > 200 && (
           <button
             onClick={() => setShowFullContent((prev) => !prev)}
-            className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 mt-2 flex items-center gap-1 cursor-pointer"
+            className="mt-2 inline-flex cursor-pointer items-center gap-1 text-sm text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
           >
             {showFullContent ? (
-              <>Show less <ChevronUp size={14} /></>
+              <>
+                Show less
+                <ChevronUp size={14} />
+              </>
             ) : (
-              <>Read more <ChevronDown size={14} /></>
+              <>
+                Read more
+                <ChevronDown size={14} />
+              </>
             )}
           </button>
         )}
 
-        {/* Company & Tags */}
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {post.companyName && (
-            <Badge variant="accent">{post.companyName}</Badge>
-          )}
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {post.companyName && <Badge variant="accent">{post.companyName}</Badge>}
           {post.tags.map((tag) => (
             <Badge key={tag}>{tag}</Badge>
           ))}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-200/70 dark:border-slate-700/70">
-          {/* Upvote/Downvote */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+        <footer className="mt-4 flex items-center gap-4 border-t border-slate-200/80 pt-3 dark:border-slate-700/70">
+          <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800">
             <motion.button
-              whileTap={{ scale: 1.2 }}
+              whileTap={{ scale: 1.12 }}
               onClick={handleUpvote}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors cursor-pointer ${
+              className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 transition-colors ${
                 upvoted
-                  ? "text-amber-500 bg-amber-50 dark:bg-amber-900/30"
-                  : "text-slate-500 hover:text-amber-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
+                  : "text-slate-500 hover:bg-slate-200 hover:text-amber-600 dark:text-slate-300 dark:hover:bg-slate-700"
               }`}
             >
               <ThumbsUp size={16} fill={upvoted ? "currentColor" : "none"} />
             </motion.button>
-            <span className={`min-w-[2rem] text-center text-sm font-medium ${
-              voteCount > 0 ? "text-amber-600 dark:text-amber-400" :
-              voteCount < 0 ? "text-red-500" : "text-slate-500"
-            }`}>
+
+            <span
+              className={`min-w-[2rem] text-center text-sm font-medium ${
+                voteCount > 0
+                  ? "text-amber-700 dark:text-amber-400"
+                  : voteCount < 0
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-slate-500 dark:text-slate-300"
+              }`}
+            >
               {voteCount}
             </span>
+
             <motion.button
-              whileTap={{ scale: 1.2 }}
+              whileTap={{ scale: 1.12 }}
               onClick={handleDownvote}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors cursor-pointer ${
+              className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 transition-colors ${
                 downvoted
-                  ? "text-red-500 bg-red-50 dark:bg-red-900/30"
-                  : "text-slate-500 hover:text-red-500 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  ? "bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400"
+                  : "text-slate-500 hover:bg-slate-200 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-700"
               }`}
             >
               <ThumbsDown size={16} fill={downvoted ? "currentColor" : "none"} />
             </motion.button>
           </div>
 
-          {/* Comments */}
           <button
             onClick={toggleComments}
-            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-500 dark:hover:text-slate-400 transition-colors cursor-pointer"
+            className="inline-flex cursor-pointer items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-300 dark:hover:text-slate-100"
           >
             <MessageCircle size={16} />
-            <span>{commentCount} {commentCount === 1 ? "comment" : "comments"}</span>
+            <span>
+              {commentCount} {commentCount === 1 ? "comment" : "comments"}
+            </span>
           </button>
-        </div>
+        </footer>
       </div>
 
-      {/* Comments */}
       <AnimatePresence>
         {showComments && (
           <motion.div
@@ -198,17 +201,17 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="border-t border-slate-200/70 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-800/30"
+            className="border-t border-slate-200/80 bg-slate-50/70 dark:border-slate-700/70 dark:bg-slate-800/30"
           >
             <CommentThread
               postId={post.id}
               comments={comments}
               loading={loadingComments}
-              onCommentAdded={() => setCommentCount((c) => c + 1)}
+              onCommentAdded={() => setCommentCount((value) => value + 1)}
             />
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </motion.article>
   );
 }

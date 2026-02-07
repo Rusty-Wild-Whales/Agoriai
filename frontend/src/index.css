@@ -44,35 +44,33 @@
 }
 
 :root {
-  --app-bg: #eef2f7;
+  --app-bg: #f3f4f8;
   --app-fg: #1f2937;
-  --surface-0: rgba(255, 255, 255, 0.9);
-  --surface-1: rgba(255, 255, 255, 0.97);
-  --surface-2: rgba(255, 255, 255, 1);
-  --surface-hover: rgba(255, 255, 255, 1);
-  --border-soft: rgba(148, 163, 184, 0.32);
-  --border-strong: rgba(100, 116, 139, 0.42);
+  --surface-0: #ffffff;
+  --surface-1: #ffffff;
+  --surface-2: #ffffff;
+  --surface-hover: #f8fafc;
+  --border-soft: rgba(148, 163, 184, 0.28);
+  --border-strong: rgba(100, 116, 139, 0.3);
   --ring-accent: rgba(245, 158, 11, 0.42);
-  --mosaic-a: rgba(245, 158, 11, 0.13);
-  --mosaic-b: rgba(14, 116, 144, 0.1);
-  --mosaic-c: rgba(2, 132, 199, 0.08);
-  --shadow-soft: 0 12px 34px rgba(15, 23, 42, 0.08);
+  --mosaic-tile-1: rgba(15, 23, 42, 0.03);
+  --mosaic-tile-2: rgba(148, 163, 184, 0.05);
+  --shadow-soft: 0 8px 22px rgba(15, 23, 42, 0.05);
 }
 
 html.dark {
-  --app-bg: #050a15;
+  --app-bg: #090c12;
   --app-fg: #e2e8f0;
-  --surface-0: rgba(15, 23, 42, 0.75);
-  --surface-1: rgba(15, 23, 42, 0.9);
-  --surface-2: rgba(15, 23, 42, 0.98);
-  --surface-hover: rgba(30, 41, 59, 0.95);
-  --border-soft: rgba(71, 85, 105, 0.46);
-  --border-strong: rgba(148, 163, 184, 0.24);
+  --surface-0: #0f172a;
+  --surface-1: #111c33;
+  --surface-2: #111c33;
+  --surface-hover: #16223d;
+  --border-soft: rgba(71, 85, 105, 0.5);
+  --border-strong: rgba(100, 116, 139, 0.56);
   --ring-accent: rgba(245, 158, 11, 0.5);
-  --mosaic-a: rgba(245, 158, 11, 0.2);
-  --mosaic-b: rgba(56, 189, 248, 0.16);
-  --mosaic-c: rgba(59, 130, 246, 0.16);
-  --shadow-soft: 0 20px 44px rgba(2, 6, 23, 0.45);
+  --mosaic-tile-1: rgba(148, 163, 184, 0.05);
+  --mosaic-tile-2: rgba(71, 85, 105, 0.08);
+  --shadow-soft: 0 12px 28px rgba(2, 6, 23, 0.35);
 }
 
 * {
@@ -92,11 +90,6 @@ body {
   color: var(--app-fg);
   font-family: var(--font-body);
   background-color: var(--app-bg);
-  background-image:
-    radial-gradient(circle at 12% 18%, var(--mosaic-a) 0%, transparent 48%),
-    radial-gradient(circle at 88% 0%, var(--mosaic-b) 0%, transparent 52%),
-    radial-gradient(circle at 72% 72%, var(--mosaic-c) 0%, transparent 48%),
-    linear-gradient(140deg, transparent 0%, rgba(255, 255, 255, 0.08) 100%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -115,24 +108,28 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image:
-    linear-gradient(45deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
-    linear-gradient(-45deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
-  background-size: 26px 26px, 36px 36px;
-  opacity: 0.16;
+  background-image: linear-gradient(90deg, var(--mosaic-tile-1) 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.14;
   mix-blend-mode: normal;
+}
+
+.mosaic-shell::after {
+  display: none;
 }
 
 .mosaic-surface {
   background: var(--surface-0);
   border: 1px solid var(--border-soft);
   box-shadow: var(--shadow-soft);
+  backdrop-filter: none;
 }
 
 .mosaic-surface-strong {
   background: var(--surface-1);
   border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-soft);
+  backdrop-filter: none;
 }
 
 .mosaic-panel {

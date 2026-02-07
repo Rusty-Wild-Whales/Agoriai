@@ -122,15 +122,15 @@ export default function Nexus() {
 
     const palette = darkMode
       ? {
-          canvas: "#071433",
-          link: "#475569",
+          canvas: "#08172f",
+          link: "#52627a",
           nodeStroke: "#0f172a",
-          label: "#94a3b8",
+          label: "#9fb0c8",
         }
       : {
-          canvas: "#f8fafc",
-          link: "#94a3b8",
-          nodeStroke: "#f8fafc",
+          canvas: "#f3f6fb",
+          link: "#8ea1b8",
+          nodeStroke: "#f3f6fb",
           label: "#334155",
         };
 
@@ -140,11 +140,23 @@ export default function Nexus() {
     const width = dimensions.width;
     const height = dimensions.height;
 
-    const nodes: SimNode[] = graphData.nodes.map((node) => ({
-      ...node,
-      x: width / 2 + (Math.random() - 0.5) * 50,
-      y: height / 2 + (Math.random() - 0.5) * 50,
-    }));
+    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+    const nodes: SimNode[] = graphData.nodes.map((node, index) => {
+      const ring = Math.sqrt(index + 1);
+      const radius = calculateNodeRadius(node);
+      const radialDistance = 42 * ring + radius * 1.5;
+      const angle = index * goldenAngle;
+
+      const hash = [...node.id].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+      const jitterX = ((hash % 7) - 3) * 3;
+      const jitterY = ((hash % 11) - 5) * 2;
+
+      return {
+        ...node,
+        x: width / 2 + Math.cos(angle) * radialDistance + jitterX,
+        y: height / 2 + Math.sin(angle) * radialDistance + jitterY,
+      };
+    });
 
     const nodesById = new Map(nodes.map((node) => [node.id, node]));
     const edges: SimEdge[] = graphData.edges.flatMap((edge) => {
@@ -179,11 +191,17 @@ export default function Nexus() {
         d3
           .forceLink(edges)
           .id((d: unknown) => (d as SimNode).id)
-          .distance((d: unknown) => 125 / Math.max((d as SimEdge).weight || 1, 0.5))
+          .distance((d: unknown) => 160 / Math.max((d as SimEdge).weight || 1, 0.45))
       )
-      .force("charge", d3.forceManyBody().strength((d: unknown) => -(calculateNodeRadius(d as GraphNode) * 12)))
+      .force("charge", d3.forceManyBody().strength((d: unknown) => -(calculateNodeRadius(d as GraphNode) * 10 + 72)))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide((d: unknown) => calculateNodeRadius(d as GraphNode) + 10));
+      .force("collide", d3.forceCollide((d: unknown) => calculateNodeRadius(d as GraphNode) + 20));
+
+    // Pre-settle the initial layout so nodes do not spawn stacked at the same coordinates.
+    simulation.stop();
+    for (let i = 0; i < 120; i += 1) {
+      simulation.tick();
+    }
 
     const link = g
       .append("g")
@@ -218,6 +236,20 @@ export default function Nexus() {
       .attr("fill", palette.label)
       .attr("font-family", "Manrope, sans-serif")
       .attr("font-weight", "600");
+
+    link
+      .attr("x1", (d) => d.source.x)
+      .attr("y1", (d) => d.source.y)
+      .attr("x2", (d) => d.target.x)
+      .attr("y2", (d) => d.target.y);
+
+    node
+      .attr("cx", (d) => d.x)
+      .attr("cy", (d) => d.y);
+
+    labels
+      .attr("x", (d) => d.x)
+      .attr("y", (d) => d.y);
 
     const drag = d3
       .drag<SVGCircleElement, SimNode>()
@@ -285,9 +317,11 @@ export default function Nexus() {
       tickCount += 1;
       if (!hasAutoFit && tickCount > 20) {
         hasAutoFit = true;
-        fitToNodes(650, 90);
+        fitToNodes(650, 104);
       }
     });
+
+    simulation.alpha(0.42).restart();
 
     const cleanup = () => {
       simulation.stop();

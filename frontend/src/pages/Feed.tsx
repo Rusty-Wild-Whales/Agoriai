@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Compass, ListFilter } from "lucide-react";
 import { FilterBar } from "../components/feed/FilterBar";
 import { PostComposer } from "../components/feed/PostComposer";
 import { PostCard } from "../components/feed/PostCard";
@@ -35,28 +36,28 @@ export default function Feed() {
 
   const filteredPosts = useMemo(() => {
     if (!posts) return [];
-    let result = [...posts];
+    const q = searchQuery.trim().toLowerCase();
 
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.content.toLowerCase().includes(q) ||
-          p.companyName?.toLowerCase().includes(q) ||
-          p.tags.some((t) => t.toLowerCase().includes(q))
-      );
-    }
+    const filtered = q
+      ? posts.filter((post) => {
+          const matchesQuery = (value: string | undefined) => value?.toLowerCase().includes(q) ?? false;
+          return (
+            matchesQuery(post.title) ||
+            matchesQuery(post.content) ||
+            matchesQuery(post.companyName) ||
+            post.tags.some((tag) => matchesQuery(tag))
+          );
+        })
+      : posts;
+
+    const result = [...filtered];
 
     if (sortBy === "upvoted") {
       result.sort((a, b) => b.upvotes - a.upvotes);
     } else if (sortBy === "discussed") {
       result.sort((a, b) => b.commentCount - a.commentCount);
     } else {
-      result.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
     return result;
@@ -73,11 +74,30 @@ export default function Feed() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="mx-auto max-w-4xl space-y-4">
+      <section className="mosaic-surface-strong rounded-2xl p-4 md:p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-display text-2xl font-semibold text-slate-900 dark:text-white">Community Feed</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              Share practical experiences and discover what works for others.
+            </p>
+          </div>
+          <div className="hidden rounded-lg bg-slate-100 p-2 dark:bg-slate-700/40 md:block">
+            <Compass size={18} className="text-slate-600 dark:text-slate-300" />
+          </div>
+        </div>
+      </section>
+
       <div data-tutorial="feed-composer">
         <PostComposer onSubmit={handleCreatePost} />
       </div>
-      <div data-tutorial="feed-filters">
+
+      <section data-tutorial="feed-filters" className="mosaic-surface-strong rounded-2xl p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+          <ListFilter size={14} />
+          <span>Filter and sort</span>
+        </div>
         <FilterBar
           activeFilter={filter}
           onFilterChange={setFilter}
@@ -86,30 +106,24 @@ export default function Feed() {
           searchQuery={searchQuery}
           onSearchChange={handleSearchChange}
         />
-      </div>
+      </section>
 
-      <div className="space-y-4">
+      <section className="space-y-4">
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <PostCardSkeleton key={i} />
-          ))
+          Array.from({ length: 4 }).map((_, i) => <PostCardSkeleton key={i} />)
         ) : filteredPosts.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-slate-500 text-lg mb-2">No posts found</p>
-            <p className="text-slate-500 text-sm">
-              The Agora is waiting for your voice. Share your first experience.
+          <div className="mosaic-surface-strong rounded-2xl px-6 py-14 text-center">
+            <p className="text-lg font-medium text-slate-700 dark:text-slate-200">No posts found</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              Try a different filter or search term, or publish your own post.
             </p>
           </div>
         ) : (
           filteredPosts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              onUpvote={(id) => upvoteMutation.mutate(id)}
-            />
+            <PostCard key={post.id} post={post} onUpvote={(id) => upvoteMutation.mutate(id)} />
           ))
         )}
-      </div>
+      </section>
     </div>
   );
 }

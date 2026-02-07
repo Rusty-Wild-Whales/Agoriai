@@ -21,7 +21,17 @@ import { mockPosts } from "../mocks/data";
 import { formatDate, categoryLabel } from "../utils/helpers";
 import { useTutorial } from "../components/tutorial/TutorialProvider";
 
-function AnimatedCounter({ value, label, icon: Icon, accent = false }: { value: number; label: string; icon: React.ElementType; accent?: boolean }) {
+function AnimatedCounter({
+  value,
+  label,
+  icon: Icon,
+  accent = false,
+}: {
+  value: number;
+  label: string;
+  icon: React.ElementType;
+  accent?: boolean;
+}) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
   const animationRef = useRef<number | null>(null);
@@ -31,6 +41,7 @@ function AnimatedCounter({ value, label, icon: Icon, accent = false }: { value: 
     if (!inView) return;
     const duration = 800;
     const start = performance.now();
+
     const animate = (now: number) => {
       const elapsed = now - start;
       const progress = Math.min(elapsed / duration, 1);
@@ -40,7 +51,9 @@ function AnimatedCounter({ value, label, icon: Icon, accent = false }: { value: 
         animationRef.current = requestAnimationFrame(animate);
       }
     };
+
     animationRef.current = requestAnimationFrame(animate);
+
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
@@ -49,25 +62,33 @@ function AnimatedCounter({ value, label, icon: Icon, accent = false }: { value: 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.4 }}
-      className={`text-center p-5 rounded-xl border transition-all ${
+      transition={{ duration: 0.28 }}
+      className={`rounded-xl border p-4 text-center transition-colors ${
         accent
-          ? "bg-amber-500/10 border-amber-500/30"
-          : "mosaic-surface hover:border-slate-300 dark:hover:border-slate-600/50"
+          ? "border-amber-300/60 bg-amber-50 dark:border-amber-600/60 dark:bg-amber-500/10"
+          : "mosaic-surface"
       }`}
     >
-      <div className={`p-2.5 rounded-xl mx-auto mb-3 w-fit ${accent ? "bg-amber-500/20" : "bg-slate-100 dark:bg-slate-700/50"}`}>
+      <div
+        className={`mx-auto mb-3 w-fit rounded-lg p-2.5 ${
+          accent ? "bg-amber-100 dark:bg-amber-500/20" : "bg-slate-100 dark:bg-slate-700/50"
+        }`}
+      >
         <Icon
-          size={20}
-          className={accent ? "text-amber-400" : "text-slate-500 dark:text-slate-400"}
+          size={18}
+          className={accent ? "text-amber-600 dark:text-amber-400" : "text-slate-600 dark:text-slate-300"}
         />
       </div>
-      <p className={`text-3xl font-display font-bold ${accent ? "text-amber-400" : "text-slate-900 dark:text-white"}`}>
+      <p
+        className={`font-display text-3xl font-bold ${
+          accent ? "text-amber-700 dark:text-amber-400" : "text-slate-900 dark:text-white"
+        }`}
+      >
         {count}
       </p>
-      <p className="text-xs text-slate-500 mt-1">{label}</p>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{label}</p>
     </motion.div>
   );
 }
@@ -77,6 +98,7 @@ export default function Dashboard() {
   const { startTutorial, completedTutorials, activeTutorial } = useTutorial();
   const autoStartAttemptedRef = useRef(false);
   const stats = user?.stats;
+
   const recentPosts = useMemo(() => mockPosts.slice(0, 5), []);
   const trendingPosts = useMemo(
     () => [...mockPosts].sort((a, b) => b.upvotes - a.upvotes).slice(0, 5),
@@ -85,7 +107,6 @@ export default function Dashboard() {
 
   const showWelcomeBanner = !completedTutorials.includes("welcome");
 
-  // Auto-start tutorial for first-time users
   useEffect(() => {
     if (!showWelcomeBanner || activeTutorial || autoStartAttemptedRef.current) return;
     autoStartAttemptedRef.current = true;
@@ -96,35 +117,28 @@ export default function Dashboard() {
   }, [showWelcomeBanner, activeTutorial, startTutorial]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
-      {/* Welcome Banner with Tutorial */}
+    <div className="mx-auto max-w-6xl space-y-6">
       {showWelcomeBanner && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl mosaic-surface-strong p-6"
+          className="mosaic-surface-strong rounded-2xl p-5 md:p-6"
         >
-          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-slate-500/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
-
-          <div className="relative z-10 flex items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-amber-500/20 backdrop-blur-sm">
-                <Sparkles size={28} className="text-amber-400" />
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-amber-100 p-3 dark:bg-amber-500/20">
+                <Sparkles size={22} className="text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <h2 className="font-display text-xl font-semibold mb-1 text-slate-900 dark:text-white">
+                <h2 className="font-display text-xl font-semibold text-slate-900 dark:text-white">
                   Welcome to Agoriai, {user?.anonAlias || "Explorer"}!
                 </h2>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">
-                  New here? Take a quick tour to learn how to make the most of the platform.
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  Take a quick walkthrough to learn the core flows.
                 </p>
               </div>
             </div>
-            <Button
-              onClick={() => startTutorial("welcome")}
-              className="shrink-0 bg-amber-500 hover:bg-amber-400 text-slate-900"
-            >
+            <Button onClick={() => startTutorial("welcome")} className="shrink-0">
               <BookOpen size={16} />
               Start Tutorial
             </Button>
@@ -132,120 +146,114 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* Welcome */}
-      <div>
-        <h2 className="font-display text-2xl font-semibold text-slate-900 dark:text-white">
+      <section>
+        <h2 className="font-display text-3xl font-semibold text-slate-900 dark:text-white">
           {showWelcomeBanner ? "Your Dashboard" : `Welcome back, ${user?.anonAlias || "Explorer"}`}
         </h2>
-        <p className="text-slate-600 dark:text-slate-400 mt-1">
+        <p className="mt-1 text-slate-600 dark:text-slate-400">
           {stats
-            ? `You've answered ${stats.questionsAnswered} questions this week. The Agora grows stronger.`
+            ? `You answered ${stats.questionsAnswered} questions this week and contributed to ${stats.connectionsCount} connections.`
             : "Your contributions shape the community."}
         </p>
-      </div>
+      </section>
 
-      {/* Stats */}
-      <div data-tutorial="dashboard-stats" className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <section data-tutorial="dashboard-stats" className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
         <AnimatedCounter value={stats?.postsCreated ?? 0} label="Posts Created" icon={FileText} />
         <AnimatedCounter value={stats?.questionsAnswered ?? 0} label="Questions Answered" icon={MessageCircle} />
         <AnimatedCounter value={stats?.helpfulVotes ?? 0} label="Helpful Votes" icon={ThumbsUp} />
         <AnimatedCounter value={stats?.connectionsCount ?? 0} label="Connections" icon={Users} />
         <AnimatedCounter value={stats?.contributionScore ?? 0} label="Contribution Score" icon={Star} accent />
-      </div>
+      </section>
 
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-3">
-        <Link to="/feed" data-tutorial="post-composer">
-          <Button className="bg-amber-500 hover:bg-amber-400 text-slate-900">
-            <PenSquare size={16} /> Share an Experience
-          </Button>
-        </Link>
-        <Link to="/feed">
-          <Button variant="secondary" className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-            <HelpCircle size={16} /> Ask a Question
-          </Button>
-        </Link>
-        <Link to="/nexus">
-          <Button variant="secondary" className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-            <Network size={16} /> Explore the Nexus
-          </Button>
-        </Link>
-      </div>
+      <section className="mosaic-surface-strong rounded-2xl p-4 md:p-5">
+        <p className="mb-3 text-sm font-medium text-slate-600 dark:text-slate-300">Quick actions</p>
+        <div className="flex flex-wrap gap-2.5">
+          <Link to="/feed" data-tutorial="post-composer">
+            <Button>
+              <PenSquare size={16} />
+              Share an Experience
+            </Button>
+          </Link>
+          <Link to="/feed">
+            <Button variant="secondary">
+              <HelpCircle size={16} />
+              Ask a Question
+            </Button>
+          </Link>
+          <Link to="/nexus">
+            <Button variant="secondary">
+              <Network size={16} />
+              Explore the Nexus
+            </Button>
+          </Link>
+        </div>
+      </section>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Recent Activity */}
-        <div className="mosaic-surface-strong rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200/70 dark:border-slate-700/70 flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/50">
-              <FileText size={14} className="text-slate-400" />
+      <div className="grid gap-5 lg:grid-cols-2">
+        <section className="mosaic-surface-strong overflow-hidden rounded-2xl">
+          <header className="flex items-center gap-2 border-b border-slate-200/80 px-4 py-3 dark:border-slate-700/70">
+            <div className="rounded-md bg-slate-100 p-1.5 dark:bg-slate-700/50">
+              <FileText size={14} className="text-slate-500 dark:text-slate-300" />
             </div>
             <h3 className="font-display font-semibold text-slate-900 dark:text-white">Recent Activity</h3>
-          </div>
-          <div className="p-3 space-y-1">
+          </header>
+          <div className="space-y-1 p-2">
             {recentPosts.map((post) => (
               <Link
                 key={post.id}
                 to="/feed"
-                className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors"
+                className="flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/40"
               >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                    {post.title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1.5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{post.title}</p>
+                  <div className="mt-1.5 flex items-center gap-2">
                     <Badge>{categoryLabel(post.category)}</Badge>
-                    <span className="text-xs text-slate-500">
-                      {formatDate(post.createdAt)}
-                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">{formatDate(post.createdAt)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 dark:bg-slate-700/50 px-2 py-1 rounded-full">
-                  <ThumbsUp size={12} /> {post.upvotes}
+                <div className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                  <ThumbsUp size={12} />
+                  {post.upvotes}
                 </div>
               </Link>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Trending */}
-        <div className="mosaic-surface-strong rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-200/70 dark:border-slate-700/70 flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-amber-500/20">
-              <TrendingUp size={14} className="text-amber-400" />
+        <section className="mosaic-surface-strong overflow-hidden rounded-2xl">
+          <header className="flex items-center gap-2 border-b border-slate-200/80 px-4 py-3 dark:border-slate-700/70">
+            <div className="rounded-md bg-amber-100 p-1.5 dark:bg-amber-500/20">
+              <TrendingUp size={14} className="text-amber-600 dark:text-amber-400" />
             </div>
-            <h3 className="font-display font-semibold text-slate-900 dark:text-white">Trending on the Agora</h3>
-          </div>
-          <div className="p-3 space-y-1">
-            {trendingPosts.map((post, i) => (
+            <h3 className="font-display font-semibold text-slate-900 dark:text-white">Trending</h3>
+          </header>
+          <div className="space-y-1 p-2">
+            {trendingPosts.map((post, index) => (
               <Link
                 key={post.id}
                 to="/feed"
-                className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors"
+                className="flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/40"
               >
-                <span className={`flex items-center justify-center w-7 h-7 rounded-lg text-sm font-display font-bold shrink-0 ${
-                  i < 3
-                    ? "bg-amber-500/20 text-amber-400"
-                    : "bg-slate-100 dark:bg-slate-700/50 text-slate-500"
-                }`}>
-                  {i + 1}
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm font-display font-bold ${
+                    index < 3
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
+                      : "bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300"
+                  }`}
+                >
+                  {index + 1}
                 </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                    {post.title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-slate-500">
-                      {post.authorAlias}
-                    </span>
-                    <span className="text-xs text-slate-600 dark:text-slate-400">
-                      {post.upvotes} upvotes
-                    </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{post.title}</p>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <span>{post.authorAlias}</span>
+                    <span>{post.upvotes} upvotes</span>
                   </div>
                 </div>
               </Link>
             ))}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

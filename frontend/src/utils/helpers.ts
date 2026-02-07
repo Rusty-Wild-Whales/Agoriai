@@ -31,29 +31,50 @@ const nouns = [
   "Sentinel", "Warden", "Herald", "Envoy", "Steward", "Rector", "Proctor",
   "Anchor", "Compass", "Horizon", "Latitude", "Longitude", "Equator",
   "Pinnacle", "Citadel", "Bastion", "Paragon", "Vanguard", "Catalyst",
+  "Monolith", "Canopy", "Summit", "Harbor", "Beacon", "Constellation",
+  "Atlas", "Domain", "Signal", "Current", "Frontier", "Terrace",
+  "Keystone", "Facet", "Relic", "Symmetry", "Vault", "Spire",
+  "Bridge", "Concord", "Forum", "Emissary", "Framework", "Kernel",
+  "Semaphore", "Spectrum", "Nova", "Lattice", "Contour", "Cascade",
+  "Aurora", "Archive", "Crescent", "Silhouette", "Grove", "River",
+  "Plateau", "Passage", "Avenue", "Portal", "Hearth", "Banyan",
+  "Oak", "Pillar", "Gallery", "Mosaic", "Draft", "Canvas",
+  "Aperture", "Lantern", "Quasar", "Comet", "Meteor", "Nebula",
+  "Vortex", "Harbinger", "Skylight", "Palisade", "Cairn", "Estuary",
+  "Meadow", "Elm", "Pioneer", "Waypoint", "Helix", "Matrix",
+  "Benchmark", "Blueprint", "Circuit", "Payload", "Foundry", "Anvil",
+  "Chisel", "Arsenal", "Repository", "Protocol", "Dispatch", "Cadence",
+  "Cadre", "Tribune", "Regent", "Marshal", "Praetor", "Archivist",
+  "Talisman", "Runestone", "Glyph", "Epoch", "Eon", "Odyssey",
+  "Voyage", "Axis", "Crux", "Emberline", "Northstar", "Ridgeline",
+  "Timber", "Shoreline", "Wildwood", "Stonepath", "Windward", "Suncrest",
+  "Nightfall", "Daybreak", "Moonrise", "Skystone", "Highland", "Lowland",
+  "Outlook", "Promontory", "Drift", "Tide", "Currentline", "Headland",
 ];
 
-export function generateAnonName(seed: string): string {
+function hashSeed(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     hash = (hash << 5) - hash + seed.charCodeAt(i);
     hash |= 0;
   }
-  const adj = adjectives[Math.abs(hash) % adjectives.length];
-  const noun = nouns[Math.abs(hash >> 8) % nouns.length];
+  return hash >>> 0;
+}
+
+export function generateAnonName(seed: string): string {
+  const adjectiveHash = hashSeed(`${seed}:adj`);
+  const nounHash = hashSeed(`${seed}:noun:${adjectiveHash}`);
+  const adj = adjectives[adjectiveHash % adjectives.length];
+  const noun = nouns[nounHash % nouns.length];
   return `${adj}${noun}`;
 }
 
 export function hashToHSL(seed: string): { h: number; s: number; l: number } {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash << 5) - hash + seed.charCodeAt(i);
-    hash |= 0;
-  }
+  const hash = hashSeed(seed);
   return {
-    h: Math.abs(hash) % 360,
-    s: 50 + (Math.abs(hash >> 8) % 30),
-    l: 45 + (Math.abs(hash >> 16) % 20),
+    h: hash % 360,
+    s: 50 + ((hash >>> 8) % 30),
+    l: 45 + ((hash >>> 16) % 20),
   };
 }
 

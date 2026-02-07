@@ -102,187 +102,190 @@ export default function Landing() {
   const heroY = useTransform(scrollYProgress, [0, 0.12], [0, -30]);
 
   return (
-    <div className="bg-[#060e1b] font-body overflow-x-hidden">
-      {/* Hero Section */}
-      <motion.section
-        style={{ opacity: heroOpacity, y: heroY }}
-        className="relative min-h-screen flex flex-col items-center justify-center"
-      >
+    <div className="relative min-h-screen bg-[#060e1b] font-body overflow-x-hidden">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <StarField />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(245,158,11,0.14),transparent_46%),radial-gradient(circle_at_82%_8%,rgba(56,189,248,0.14),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(245,158,11,0.06)_0%,transparent_24%,rgba(71,85,105,0.12)_50%,transparent_72%,rgba(245,158,11,0.05)_100%)]" />
+      </div>
 
-        {/* Radial glow behind hero */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.06)_0%,_transparent_60%)]" />
-
-        {/* Subtle gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#060e1b]/90" />
-
-        {/* Hero Content */}
-        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            className="font-display text-6xl md:text-8xl font-bold text-white mb-8 tracking-tight"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-          >
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 1.4, delay: 0.3 }}
-              className="bg-gradient-to-b from-white via-white to-slate-400 bg-clip-text text-transparent"
-            >
-              agoriai
-            </motion.span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-            className="text-xl md:text-2xl text-slate-200 mb-3 font-light"
-          >
-            Career access is a financial equity problem.
-          </motion.p>
-
-          <motion.p
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
-            className="text-base text-slate-400 mb-12"
-          >
-            We are building the solution.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.9, ease: [0.25, 0.1, 0.25, 1] }}
-          >
-            <Link to="/onboarding">
-              <Button
-                size="lg"
-                className="px-8 py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-medium text-sm tracking-wide shadow-lg shadow-amber-500/20 hover:shadow-amber-400/30 transition-all"
-              >
-                Join the Agora <ArrowRight size={16} />
-              </Button>
-            </Link>
-          </motion.div>
-        </div>
-
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 0.8 }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+      <div className="relative z-10">
+        {/* Hero Section */}
+        <motion.section
+          style={{ opacity: heroOpacity, y: heroY }}
+          className="relative min-h-screen flex flex-col items-center justify-center"
         >
-          <span className="text-amber-500/70 text-xs tracking-[0.2em] uppercase">
-            Scroll to learn more
-          </span>
-          <motion.div
-            animate={{ y: [0, 6, 0] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <ChevronDown size={20} className="text-amber-500/50" />
-          </motion.div>
-        </motion.div>
-      </motion.section>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.08)_0%,_transparent_62%)]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#060e1b]/12 to-[#060e1b]/70" />
 
-      {/* Problem Section */}
-      <section className="relative py-28 px-6 bg-[#060e1b]">
-        <div className="max-w-6xl mx-auto">
-          <AnimatedSection className="text-center mb-16">
-            <span className="inline-block px-4 py-2 rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium tracking-wider mb-6 border border-amber-500/20">
-              THE PROBLEM
-            </span>
-            <h2 className="font-display text-3xl md:text-5xl font-bold text-white leading-tight">
-              The playing field was never level
-            </h2>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.15} className="max-w-3xl mx-auto text-center mb-16">
-            <p className="text-base md:text-lg text-slate-400 leading-relaxed">
-              Students from well-connected backgrounds enter the job market with
-              compounding advantages. Access to insider knowledge, mentorship, and
-              referrals is gatekept by pedigree, not potential.
-            </p>
-          </AnimatedSection>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <StatCard value="3x" label="More likely to get interviews with connections" delay={0} />
-            <StatCard value="68%" label="Feel they lack career guidance" delay={0.08} />
-            <StatCard value="42%" label="Jobs filled via informal networks" delay={0.16} />
-            <StatCard value="$12K" label="First job salary gap" delay={0.24} />
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="relative py-28 px-6 bg-[#060e1b]">
-        <div className="max-w-6xl mx-auto">
-          <AnimatedSection className="text-center mb-16">
-            <span className="inline-block px-4 py-2 rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium tracking-wider mb-6 border border-amber-500/20">
-              HOW IT WORKS
-            </span>
-            <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
-              A new model for career access
-            </h2>
-          </AnimatedSection>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            <FeatureCard
-              number="01"
-              title="Share Anonymously"
-              description="Post experiences and ask questions without identity pressure. Your ideas speak first."
-              delay={0}
-            />
-            <FeatureCard
-              number="02"
-              title="Build Through Contribution"
-              description="Your visibility grows as you help others. Contribution is the currency here."
-              delay={0.1}
-            />
-            <FeatureCard
-              number="03"
-              title="Connect When Ready"
-              description="Reveal your identity on your own terms. Build trust, then step into the open."
-              delay={0.2}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="relative py-32 px-6 bg-[#060e1b]">
-        <div className="max-w-3xl mx-auto text-center">
-          <AnimatedSection>
-            <h2 className="font-display text-3xl md:text-5xl font-bold text-white mb-6">
-              Ready to join the Agora?
-            </h2>
-            <p className="text-slate-400 mb-10 text-base md:text-lg">
-              Your contributions start building your presence the moment you arrive.
-            </p>
-            <Link to="/onboarding">
-              <Button
-                size="lg"
-                className="px-10 py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-medium shadow-lg shadow-amber-500/20 hover:shadow-amber-400/30 transition-all"
+          {/* Hero Content */}
+          <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+              className="font-display text-6xl md:text-8xl font-bold text-white mb-8 tracking-tight"
+              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            >
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1.4, delay: 0.3 }}
+                className="text-white"
               >
-                Get Started <ArrowRight size={16} />
-              </Button>
-            </Link>
-          </AnimatedSection>
-        </div>
-      </section>
+                agoriai
+              </motion.span>
+            </motion.h1>
 
-      {/* Footer */}
-      <footer className="bg-[#060e1b] py-10 px-6 border-t border-slate-800/30">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <span className="font-display text-lg font-semibold text-white">agoriai</span>
-          <p className="text-slate-500 text-sm">
-            Where contribution matters more than background.
-          </p>
-        </div>
-      </footer>
+            <motion.p
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+              className="text-xl md:text-2xl text-slate-200 mb-3 font-light"
+            >
+              Career access is a financial equity problem.
+            </motion.p>
+
+            <motion.p
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
+              className="text-base text-slate-400 mb-12"
+            >
+              We are building the solution.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.9, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              <Link to="/onboarding">
+                <Button
+                  size="lg"
+                  className="px-8 py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-medium text-sm tracking-wide shadow-lg shadow-amber-500/20 hover:shadow-amber-400/30 transition-all"
+                >
+                  Join the Agora <ArrowRight size={16} />
+                </Button>
+              </Link>
+            </motion.div>
+          </div>
+
+          {/* Scroll indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.5, duration: 0.8 }}
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+          >
+            <span className="text-amber-500/70 text-xs tracking-[0.2em] uppercase">
+              Scroll to learn more
+            </span>
+            <motion.div
+              animate={{ y: [0, 6, 0] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <ChevronDown size={20} className="text-amber-500/50" />
+            </motion.div>
+          </motion.div>
+        </motion.section>
+
+        {/* Problem Section */}
+        <section className="relative py-28 px-6 bg-transparent">
+          <div className="max-w-6xl mx-auto">
+            <AnimatedSection className="text-center mb-16">
+              <span className="inline-block px-4 py-2 rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium tracking-wider mb-6 border border-amber-500/20">
+                THE PROBLEM
+              </span>
+              <h2 className="font-display text-3xl md:text-5xl font-bold text-white leading-tight">
+                The playing field was never level
+              </h2>
+            </AnimatedSection>
+
+            <AnimatedSection delay={0.15} className="max-w-3xl mx-auto text-center mb-16">
+              <p className="text-base md:text-lg text-slate-300 leading-relaxed">
+                Students from well-connected backgrounds enter the job market with
+                compounding advantages. Access to insider knowledge, mentorship, and
+                referrals is gatekept by pedigree, not potential.
+              </p>
+            </AnimatedSection>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <StatCard value="3x" label="More likely to get interviews with connections" delay={0} />
+              <StatCard value="68%" label="Feel they lack career guidance" delay={0.08} />
+              <StatCard value="42%" label="Jobs filled via informal networks" delay={0.16} />
+              <StatCard value="$12K" label="First job salary gap" delay={0.24} />
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works */}
+        <section className="relative py-28 px-6 bg-transparent">
+          <div className="max-w-6xl mx-auto">
+            <AnimatedSection className="text-center mb-16">
+              <span className="inline-block px-4 py-2 rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium tracking-wider mb-6 border border-amber-500/20">
+                HOW IT WORKS
+              </span>
+              <h2 className="font-display text-3xl md:text-5xl font-bold text-white">
+                A new model for career access
+              </h2>
+            </AnimatedSection>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <FeatureCard
+                number="01"
+                title="Share Anonymously"
+                description="Post experiences and ask questions without identity pressure. Your ideas speak first."
+                delay={0}
+              />
+              <FeatureCard
+                number="02"
+                title="Build Through Contribution"
+                description="Your visibility grows as you help others. Contribution is the currency here."
+                delay={0.1}
+              />
+              <FeatureCard
+                number="03"
+                title="Connect When Ready"
+                description="Reveal your identity on your own terms. Build trust, then step into the open."
+                delay={0.2}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="relative py-32 px-6 bg-transparent">
+          <div className="max-w-3xl mx-auto text-center">
+            <AnimatedSection>
+              <h2 className="font-display text-3xl md:text-5xl font-bold text-white mb-6">
+                Ready to join the Agora?
+              </h2>
+              <p className="text-slate-300 mb-10 text-base md:text-lg">
+                Your contributions start building your presence the moment you arrive.
+              </p>
+              <Link to="/onboarding">
+                <Button
+                  size="lg"
+                  className="px-10 py-4 bg-amber-500 hover:bg-amber-400 text-slate-900 font-medium shadow-lg shadow-amber-500/20 hover:shadow-amber-400/30 transition-all"
+                >
+                  Get Started <ArrowRight size={16} />
+                </Button>
+              </Link>
+            </AnimatedSection>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="bg-transparent py-10 px-6 border-t border-slate-700/30">
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <span className="font-display text-lg font-semibold text-white">agoriai</span>
+            <p className="text-slate-400 text-sm">
+              Where contribution matters more than background.
+            </p>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

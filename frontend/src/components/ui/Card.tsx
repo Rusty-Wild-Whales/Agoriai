@@ -34,7 +34,7 @@ export function Card({
       )}
       <div className="px-5 py-4">{children}</div>
       {footer && (
-        <div className="px-5 py-3 border-t border-slate-200/70 dark:border-slate-700/70 bg-white/50 dark:bg-slate-800/50 rounded-b-2xl">
+        <div className="px-5 py-3 border-t border-slate-200/70 dark:border-slate-700/70 bg-slate-50 dark:bg-slate-800 rounded-b-2xl">
           {footer}
         </div>
       )}

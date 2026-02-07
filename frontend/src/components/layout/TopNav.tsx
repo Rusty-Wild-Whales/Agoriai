@@ -30,13 +30,15 @@ export function TopNav() {
   };
 
   return (
-    <header className="h-16 mosaic-surface backdrop-blur-sm border-b border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
-      <h1 className="font-display text-xl font-semibold text-slate-900 dark:text-white">
-        {title}
-      </h1>
+    <header className="h-16 mosaic-surface border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
+      <div className="min-w-0">
+        <h1 className="font-display text-[1.35rem] leading-none font-semibold text-slate-900 dark:text-white">
+          {title}
+        </h1>
+      </div>
 
       <div className="flex items-center gap-4">
-        <div className="w-64 hidden md:block">
+        <div className="w-72 hidden md:block">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <input
@@ -50,7 +52,7 @@ export function TopNav() {
                 }
               }}
               placeholder="Search the Agora..."
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-white/70 dark:bg-slate-800/55 border border-slate-200/70 dark:border-slate-700/70 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-colors"
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 transition-colors"
             />
           </div>
         </div>
@@ -60,7 +62,7 @@ export function TopNav() {
           }}
           className={`relative p-2 rounded-xl transition-colors ${
             notificationsEnabled
-              ? "text-slate-400 hover:bg-white/70 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+              ? "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white cursor-pointer"
               : "text-slate-300 dark:text-slate-600 cursor-not-allowed"
           }`}
           title={notificationsEnabled ? "Open notifications" : "Notifications are disabled in settings"}

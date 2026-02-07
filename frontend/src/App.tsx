@@ -1,20 +1,21 @@
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { AppLayout } from "./components/layout/AppLayout";
-import Landing from "./pages/Landing";
-import Dashboard from "./pages/Dashboard";
-import Feed from "./pages/Feed";
-import Nexus from "./pages/Nexus";
-import CompanyProfile from "./pages/CompanyProfile";
-import UserProfile from "./pages/UserProfile";
-import Messages from "./pages/Messages";
-import Onboarding from "./pages/Onboarding";
-import { useEffect } from "react";
 import { useAuthStore } from "./stores/authStore";
 import { useUIStore } from "./stores/uiStore";
 import { mockUsers } from "./mocks/data";
 import { TutorialProvider } from "./components/tutorial/TutorialProvider";
+
+const Landing = lazy(() => import("./pages/Landing"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Feed = lazy(() => import("./pages/Feed"));
+const Nexus = lazy(() => import("./pages/Nexus"));
+const CompanyProfile = lazy(() => import("./pages/CompanyProfile"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
+const Messages = lazy(() => import("./pages/Messages"));
 
 // Global dark mode synchronizer - runs on all pages
 function DarkModeSync({ children }: { children: React.ReactNode }) {
@@ -44,6 +45,18 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+      Loading...
+    </div>
+  );
+}
+
+function withRouteFallback(node: React.ReactNode) {
+  return <Suspense fallback={<RouteFallback />}>{node}</Suspense>;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -52,15 +65,15 @@ export default function App() {
           <BrowserRouter>
             <TutorialProvider>
               <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/" element={withRouteFallback(<Landing />)} />
+                <Route path="/onboarding" element={withRouteFallback(<Onboarding />)} />
                 <Route element={<AppLayout />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/feed" element={<Feed />} />
-                  <Route path="/nexus" element={<Nexus />} />
-                  <Route path="/company/:id" element={<CompanyProfile />} />
-                  <Route path="/profile/:id" element={<UserProfile />} />
-                  <Route path="/messages" element={<Messages />} />
+                  <Route path="/dashboard" element={withRouteFallback(<Dashboard />)} />
+                  <Route path="/feed" element={withRouteFallback(<Feed />)} />
+                  <Route path="/nexus" element={withRouteFallback(<Nexus />)} />
+                  <Route path="/company/:id" element={withRouteFallback(<CompanyProfile />)} />
+                  <Route path="/profile/:id" element={withRouteFallback(<UserProfile />)} />
+                  <Route path="/messages" element={withRouteFallback(<Messages />)} />
                 </Route>
               </Routes>
             </TutorialProvider>
