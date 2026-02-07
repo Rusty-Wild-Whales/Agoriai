@@ -38,7 +38,7 @@ interface PostComposerProps {
     category: PostCategory;
     tags: string[];
     companyName?: string;
-  }) => void;
+  }) => Promise<void>;
   initialOpen?: boolean;
 }
 
@@ -53,6 +53,8 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
   const [companyName, setCompanyName] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [publishing, setPublishing] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const addTag = () => {
     const tag = tagInput.trim().toLowerCase();
@@ -66,23 +68,31 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
     setTags((prev) => prev.filter((t) => t !== tag));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) return;
+    setPublishing(true);
+    setSubmitError(null);
 
-    onSubmit({
-      title,
-      content,
-      category,
-      tags,
-      companyName: companyName || undefined,
-    });
+    try {
+      await onSubmit({
+        title,
+        content,
+        category,
+        tags,
+        companyName: companyName || undefined,
+      });
 
-    setTitle("");
-    setContent("");
-    setCompanyName("");
-    setTags([]);
-    setTagInput("");
-    setOpen(false);
+      setTitle("");
+      setContent("");
+      setCompanyName("");
+      setTags([]);
+      setTagInput("");
+      setOpen(false);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Unable to publish post.");
+    } finally {
+      setPublishing(false);
+    }
   };
 
   return (
@@ -94,7 +104,10 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              setSubmitError(null);
+              setOpen(true);
+            }}
             className="group flex w-full cursor-pointer items-center gap-4 p-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/35"
           >
             <Avatar seed={user?.anonAvatarSeed || "default"} size="md" />
@@ -117,7 +130,10 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
             <header className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-700/70">
               <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-white">Create Post</h3>
               <button
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  setSubmitError(null);
+                  setOpen(false);
+                }}
                 className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               >
                 <X size={18} />
@@ -210,11 +226,21 @@ export function PostComposer({ onSubmit, initialOpen = false }: PostComposerProp
                   </span>
                 </div>
 
-                <Button onClick={handleSubmit} disabled={!title.trim() || !content.trim()}>
+                <Button
+                  onClick={() => {
+                    void handleSubmit();
+                  }}
+                  disabled={!title.trim() || !content.trim() || publishing}
+                >
                   <Send size={14} />
-                  Publish Post
+                  {publishing ? "Publishing..." : "Publish Post"}
                 </Button>
               </footer>
+              {submitError && (
+                <p className="mt-2 rounded-lg border border-rose-300/70 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
+                  {submitError}
+                </p>
+              )}
             </div>
           </motion.div>
         )}

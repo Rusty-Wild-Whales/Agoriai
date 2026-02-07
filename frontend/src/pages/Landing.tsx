@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -110,7 +110,9 @@ export default function Landing() {
 
   const countFormatter = new Intl.NumberFormat("en-US");
   const formatCount = (value: number | undefined) =>
-    typeof value === "number" ? countFormatter.format(value) : "—";
+    typeof value === "number" ? countFormatter.format(Math.round(value)) : "—";
+  const formatPercent = (value: number) => `${value.toFixed(1)}%`;
+  const formatRatio = (value: number) => `${value.toFixed(2)}x`;
 
   return (
     <div className="relative min-h-screen bg-[#060e1b] font-body overflow-x-hidden">
@@ -218,16 +220,70 @@ export default function Landing() {
               </p>
             </AnimatedSection>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
-              <StatCard value={formatCount(platformStats?.users)} label="Registered users" delay={0} />
-              <StatCard value={formatCount(platformStats?.posts)} label="Posts shared" delay={0.08} />
-              <StatCard value={formatCount(platformStats?.messages)} label="Messages exchanged" delay={0.16} />
-              <StatCard value={formatCount(platformStats?.userConnections)} label="User connections" delay={0.24} />
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                value={platformStats?.users}
+                label="Registered users"
+                delay={0}
+                formatter={(value) => formatCount(value)}
+              />
+              <StatCard
+                value={platformStats?.posts}
+                label="Posts shared"
+                delay={0.08}
+                formatter={(value) => formatCount(value)}
+              />
+              <StatCard
+                value={platformStats?.messages}
+                label="Messages exchanged"
+                delay={0.16}
+                formatter={(value) => formatCount(value)}
+              />
+              <StatCard
+                value={platformStats?.userConnections}
+                label="User connections"
+                delay={0.24}
+                formatter={(value) => formatCount(value)}
+              />
             </div>
 
-            <p className="mt-6 text-center text-xs text-slate-400">
-              Source: live database ({platformStats?.source ?? "live_database"}) •
-              updated {platformStats ? new Date(platformStats.generatedAt).toLocaleString() : " ..."}
+            <AnimatedSection delay={0.2} className="mt-12 text-center">
+              <h3 className="font-display text-2xl font-semibold text-white">Community Signals</h3>
+              <p className="mt-2 text-sm text-slate-400">
+                Live rates derived from platform activity.
+              </p>
+            </AnimatedSection>
+
+            <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                value={platformStats?.derived.usersWithPostsRate}
+                label="Members who have posted"
+                delay={0.04}
+                formatter={(value) => formatPercent(value)}
+              />
+              <StatCard
+                value={platformStats?.derived.connectedUsersRate}
+                label="Members with connections"
+                delay={0.12}
+                formatter={(value) => formatPercent(value)}
+              />
+              <StatCard
+                value={platformStats?.derived.commentsPerPost}
+                label="Comments per post"
+                delay={0.2}
+                formatter={(value) => formatRatio(value)}
+              />
+              <StatCard
+                value={platformStats?.derived.messagesPerUser}
+                label="Messages per member"
+                delay={0.28}
+                formatter={(value) => formatRatio(value)}
+              />
+            </div>
+
+            <p className="mt-7 text-center text-xs text-slate-400">
+              Source: live database ({platformStats?.source ?? "live_database"}) • updated{" "}
+              {platformStats ? new Date(platformStats.generatedAt).toLocaleString() : "..."}
             </p>
           </div>
         </section>
@@ -303,10 +359,73 @@ export default function Landing() {
   );
 }
 
+function AnimatedMetricValue({
+  value,
+  inView,
+  formatter,
+}: {
+  value: number | undefined;
+  inView: boolean;
+  formatter: (value: number) => string;
+}) {
+  const [displayValue, setDisplayValue] = useState(0);
+  const hasAnimatedRef = useRef(false);
+  const latestTargetRef = useRef<number | undefined>(value);
+
+  useEffect(() => {
+    if (value === undefined || !inView) {
+      return;
+    }
+
+    if (latestTargetRef.current === value && hasAnimatedRef.current) {
+      return;
+    }
+
+    latestTargetRef.current = value;
+    const from = hasAnimatedRef.current ? displayValue : 0;
+    hasAnimatedRef.current = true;
+    const duration = 900;
+    const start = performance.now();
+
+    let rafId = 0;
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(from + (value - from) * eased);
+
+      if (progress < 1) {
+        rafId = requestAnimationFrame(animate);
+      } else {
+        setDisplayValue(value);
+      }
+    };
+
+    rafId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafId);
+  }, [displayValue, inView, value]);
+
+  if (value === undefined) {
+    return "—";
+  }
+
+  return formatter(displayValue);
+}
+
 // Stat card with stronger contrast
-function StatCard({ value, label, delay }: { value: string; label: string; delay: number }) {
+function StatCard({
+  value,
+  label,
+  delay,
+  formatter,
+}: {
+  value: number | undefined;
+  label: string;
+  delay: number;
+  formatter: (value: number) => string;
+}) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const inView = useInView(ref, { once: true, margin: "-12% 0px -18% 0px" });
 
   return (
     <motion.div
@@ -317,7 +436,7 @@ function StatCard({ value, label, delay }: { value: string; label: string; delay
       className="p-6 rounded-xl bg-slate-800/40 border border-slate-600/30 text-center hover:border-amber-500/30 hover:bg-slate-800/60 transition-all duration-300"
     >
       <span className="block font-display text-4xl md:text-5xl font-bold text-amber-400 mb-3">
-        {value}
+        <AnimatedMetricValue value={value} inView={inView} formatter={formatter} />
       </span>
       <span className="block text-sm text-slate-300 leading-relaxed">
         {label}

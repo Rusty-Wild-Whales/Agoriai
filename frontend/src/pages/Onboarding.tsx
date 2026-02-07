@@ -1,28 +1,48 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { RefreshCw, ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { RefreshCw, ArrowRight, ArrowLeft, Check, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Avatar } from "../components/ui/Avatar";
 import { generateAnonName } from "../utils/helpers";
 import { StarField } from "./Landing";
 import { agoraApi } from "../services/agoraApi";
 import { useAuthStore } from "../stores/authStore";
+import { findUniversityMatches, isKnownUniversity } from "../data/universities";
 
 const interests = [
   "Software Engineering",
+  "Quant Trading",
+  "Cybersecurity",
+  "Cloud Infrastructure",
+  "Machine Learning",
+  "Artificial Intelligence",
+  "Robotics",
+  "Biotech",
   "Finance",
+  "Investment Banking",
+  "Private Equity",
+  "Venture Capital",
   "Consulting",
   "Data Science",
   "Design",
+  "UX Research",
   "Product Management",
   "Marketing",
+  "Growth",
+  "Sales",
+  "Community",
+  "Public Policy",
+  "Law",
+  "Medicine",
+  "Education",
   "Operations",
   "Research",
   "Entrepreneurship",
 ];
 
 type AuthMode = "register" | "login";
+type EmailStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "error";
 
 function isAcademicEmail(email: string) {
   const normalized = email.trim().toLowerCase();
@@ -59,6 +79,9 @@ export default function Onboarding() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<EmailStatus>("idle");
+  const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
+  const [showUniversityOptions, setShowUniversityOptions] = useState(false);
 
   const seed = `onboard-${seedCounter}`;
   const alias = generateAnonName(seed);
@@ -68,6 +91,8 @@ export default function Onboarding() {
     setStep(0);
     setDirection(1);
     setAuthError(null);
+    setEmailStatus("idle");
+    setEmailStatusMessage(null);
   }, []);
 
   const regenerate = () => setSeedCounter((value) => value + 1);
@@ -83,13 +108,76 @@ export default function Onboarding() {
   const validPassword = password.length >= 12;
   const validRegistrationCredentials = validEmail && validPassword;
   const validLoginCredentials = validEmail && password.length > 0;
+  const universityMatches = useMemo(() => findUniversityMatches(university), [university]);
+  const universityIsCustom = Boolean(university.trim()) && !isKnownUniversity(university);
 
   const canAdvance = () => {
-    if (step === 1) return validRegistrationCredentials && password === confirmPassword;
+    if (step === 1) {
+      return (
+        validRegistrationCredentials &&
+        password === confirmPassword &&
+        emailStatus === "available"
+      );
+    }
     if (step === 2) return Boolean(university.trim()) && Boolean(gradYear.trim());
     if (step === 3) return selectedInterests.length > 0;
     return true;
   };
+
+  useEffect(() => {
+    if (mode !== "register" || step !== 1) {
+      return;
+    }
+
+    if (!normalizedEmail) {
+      setEmailStatus("idle");
+      setEmailStatusMessage(null);
+      return;
+    }
+
+    if (!validEmail) {
+      setEmailStatus("invalid");
+      setEmailStatusMessage("Enter a valid academic email.");
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setEmailStatus("checking");
+      setEmailStatusMessage("Checking email availability...");
+
+      void agoraApi
+        .checkEmailAvailability(normalizedEmail)
+        .then((result) => {
+          if (cancelled) return;
+
+          if (!result.validFormat) {
+            setEmailStatus("invalid");
+            setEmailStatusMessage("Enter a valid academic email.");
+            return;
+          }
+
+          if (!result.available) {
+            setEmailStatus("taken");
+            setEmailStatusMessage("An account with this email already exists.");
+            return;
+          }
+
+          setEmailStatus("available");
+          setEmailStatusMessage("Email is available.");
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setEmailStatus("error");
+          setEmailStatusMessage("Could not verify email right now. Please try again.");
+        });
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [mode, normalizedEmail, step, validEmail]);
 
   const nextStep = useCallback(() => {
     setDirection(1);
@@ -126,6 +214,14 @@ export default function Onboarding() {
   const handleRegister = async () => {
     if (!validRegistrationCredentials) {
       setAuthError("Enter a valid academic email and a strong password.");
+      return;
+    }
+    if (emailStatus === "taken") {
+      setAuthError("An account with this academic email already exists.");
+      return;
+    }
+    if (emailStatus === "checking" || emailStatus === "error" || emailStatus === "invalid") {
+      setAuthError("Please resolve your email before continuing.");
       return;
     }
     if (password !== confirmPassword) {
@@ -231,13 +327,37 @@ export default function Onboarding() {
       <div className="flex-1 space-y-4">
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-200">School Email</label>
-          <input
-            type="email"
-            placeholder="you@university.edu"
-            value={schoolEmail}
-            onChange={(event) => setSchoolEmail(event.target.value)}
-            className="w-full rounded-xl border border-slate-600/75 bg-slate-900/55 px-4 py-3 text-white placeholder-slate-400 transition-colors focus:border-amber-500/60 focus:outline-none"
-          />
+          <div className="relative">
+            <input
+              type="email"
+              placeholder="you@university.edu"
+              value={schoolEmail}
+              onChange={(event) => setSchoolEmail(event.target.value)}
+              className="w-full rounded-xl border border-slate-600/75 bg-slate-900/55 px-4 py-3 pr-10 text-white placeholder-slate-400 transition-colors focus:border-amber-500/60 focus:outline-none"
+            />
+            {emailStatus === "checking" && (
+              <Loader2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-slate-400" />
+            )}
+            {emailStatus === "available" && (
+              <CheckCircle2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+            )}
+            {(emailStatus === "taken" || emailStatus === "invalid" || emailStatus === "error") && (
+              <AlertCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-400" />
+            )}
+          </div>
+          {emailStatusMessage && (
+            <p
+              className={`mt-2 text-xs ${
+                emailStatus === "available"
+                  ? "text-emerald-400"
+                  : emailStatus === "checking"
+                    ? "text-slate-400"
+                    : "text-rose-300"
+              }`}
+            >
+              {emailStatusMessage}
+            </p>
+          )}
         </div>
 
         <div>
@@ -295,13 +415,43 @@ export default function Onboarding() {
       <div className="flex-1 space-y-5">
         <div>
           <label className="mb-2 block text-sm font-medium text-slate-200">University</label>
-          <input
-            type="text"
-            placeholder="e.g. Stanford University"
-            value={university}
-            onChange={(event) => setUniversity(event.target.value)}
-            className="w-full rounded-xl border border-slate-600/75 bg-slate-900/55 px-4 py-3 text-white placeholder-slate-400 transition-colors focus:border-amber-500/60 focus:outline-none"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Start typing your school..."
+              value={university}
+              onFocus={() => setShowUniversityOptions(true)}
+              onBlur={() => {
+                setTimeout(() => setShowUniversityOptions(false), 140);
+              }}
+              onChange={(event) => setUniversity(event.target.value)}
+              className="w-full rounded-xl border border-slate-600/75 bg-slate-900/55 px-4 py-3 text-white placeholder-slate-400 transition-colors focus:border-amber-500/60 focus:outline-none"
+            />
+
+            {showUniversityOptions && universityMatches.length > 0 && (
+              <div className="absolute z-20 mt-2 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-600/80 bg-slate-900/95 p-1 shadow-xl backdrop-blur-sm">
+                {universityMatches.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      setUniversity(option);
+                      setShowUniversityOptions(false);
+                    }}
+                    className="w-full cursor-pointer rounded-lg px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-slate-800"
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-slate-400">
+            {universityIsCustom
+              ? "Custom school detected. You can continue with this value."
+              : "Pick from suggestions or enter a custom college/university."}
+          </p>
         </div>
 
         <div>
@@ -345,7 +495,7 @@ export default function Onboarding() {
         <p className="text-sm text-slate-400">Select the topics you want to see first.</p>
       </div>
 
-      <div className="flex flex-1 content-start flex-wrap gap-2">
+      <div className="flex max-h-[240px] flex-1 content-start flex-wrap gap-2 overflow-y-auto pr-1">
         {interests.map((interest) => {
           const selected = selectedInterests.includes(interest);
           return (
@@ -421,7 +571,7 @@ export default function Onboarding() {
       </div>
 
       <div className="relative z-10 flex min-h-screen items-center justify-center p-6">
-        <div className="w-full max-w-3xl">
+        <div className="w-full max-w-2xl">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -472,7 +622,7 @@ export default function Onboarding() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="flex min-h-[520px] flex-col rounded-3xl border border-slate-600/80 bg-slate-900/82 p-8 shadow-[0_18px_48px_rgba(2,6,23,0.58)] backdrop-blur-md"
+                className="flex min-h-[500px] flex-col rounded-3xl border border-slate-600/80 bg-slate-900/82 p-7 shadow-[0_18px_48px_rgba(2,6,23,0.58)] backdrop-blur-md md:p-8"
               >
                 <AnimatePresence mode="wait" custom={direction}>
                   {registerSteps[step]}

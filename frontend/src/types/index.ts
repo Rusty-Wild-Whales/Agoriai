@@ -169,4 +169,10 @@ export interface PlatformStats {
   userConnections: number;
   generatedAt: string;
   source: "live_database";
+  derived: {
+    usersWithPostsRate: number;
+    connectedUsersRate: number;
+    commentsPerPost: number;
+    messagesPerUser: number;
+  };
 }

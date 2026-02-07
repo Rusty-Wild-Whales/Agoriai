@@ -33,6 +33,7 @@ import {
   usersTable,
 } from "./db/schema";
 import { seedDatabase } from "./db/seed";
+import { findModerationViolation } from "./moderation";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
@@ -113,6 +114,23 @@ type AuthSession = {
   token: string;
   user: UserRow;
   sessionId: string;
+};
+
+type PlatformStats = {
+  users: number;
+  posts: number;
+  comments: number;
+  messages: number;
+  companies: number;
+  userConnections: number;
+  generatedAt: string;
+  source: "live_database";
+  derived: {
+    usersWithPostsRate: number;
+    connectedUsersRate: number;
+    commentsPerPost: number;
+    messagesPerUser: number;
+  };
 };
 
 function toIso(value: Date | string | null | undefined): string {
@@ -246,18 +264,22 @@ function getBearerToken(headers: Record<string, string | undefined>) {
   return token.trim();
 }
 
-function getCompanyGroup(industry: string): string {
-  const normalized = industry.toLowerCase();
-  if (normalized.includes("tech")) return "engineering";
-  if (normalized.includes("finance")) return "finance";
-  if (normalized.includes("consult")) return "consulting";
-  return normalized;
-}
-
 function ensurePositiveInt(value: string | undefined, fallback: number) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return Math.floor(parsed);
+}
+
+function roundMetric(value: number, digits = 1) {
+  if (!Number.isFinite(value)) return 0;
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
+
+function moderationMessage(field: string) {
+  const normalized = field.trim().toLowerCase();
+  const label = normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : "Content";
+  return `${label} contains inappropriate language. Please revise and try again.`;
 }
 
 function parseVoteValue(value: unknown): PostVoteValue | null {
@@ -522,12 +544,19 @@ async function getCompanyList() {
   }));
 }
 
-async function getPlatformStats() {
+async function getPlatformStats(): Promise<PlatformStats> {
   const [usersCountRow] = await db.select({ count: count() }).from(usersTable);
   const [postsCountRow] = await db.select({ count: count() }).from(postsTable);
   const [commentsCountRow] = await db.select({ count: count() }).from(commentsTable);
   const [messagesCountRow] = await db.select({ count: count() }).from(messagesTable);
   const [companiesCountRow] = await db.select({ count: count() }).from(companiesTable);
+  const [usersWithPostsRow] = await db
+    .select({ count: sql<number>`count(distinct ${postsTable.authorId})` })
+    .from(postsTable);
+  const [connectedUsersRow] = await db
+    .select({ count: sql<number>`count(distinct ${connectionsTable.sourceId})` })
+    .from(connectionsTable)
+    .where(and(eq(connectionsTable.sourceType, "user"), eq(connectionsTable.targetType, "user")));
 
   const [connectionsCountRow] = await db
     .select({
@@ -546,15 +575,33 @@ async function getPlatformStats() {
       )
     );
 
+  const users = Number(usersCountRow?.count ?? 0);
+  const posts = Number(postsCountRow?.count ?? 0);
+  const comments = Number(commentsCountRow?.count ?? 0);
+  const messages = Number(messagesCountRow?.count ?? 0);
+  const companies = Number(companiesCountRow?.count ?? 0);
+  const userConnections = Number(connectionsCountRow?.count ?? 0);
+  const usersWithPosts = Number(usersWithPostsRow?.count ?? 0);
+  const connectedUsers = Number(connectedUsersRow?.count ?? 0);
+
+  const safeUserDivisor = Math.max(users, 1);
+  const safePostDivisor = Math.max(posts, 1);
+
   return {
-    users: Number(usersCountRow?.count ?? 0),
-    posts: Number(postsCountRow?.count ?? 0),
-    comments: Number(commentsCountRow?.count ?? 0),
-    messages: Number(messagesCountRow?.count ?? 0),
-    companies: Number(companiesCountRow?.count ?? 0),
-    userConnections: Number(connectionsCountRow?.count ?? 0),
+    users,
+    posts,
+    comments,
+    messages,
+    companies,
+    userConnections,
     generatedAt: new Date().toISOString(),
     source: "live_database",
+    derived: {
+      usersWithPostsRate: roundMetric((usersWithPosts / safeUserDivisor) * 100),
+      connectedUsersRate: roundMetric((connectedUsers / safeUserDivisor) * 100),
+      commentsPerPost: roundMetric(comments / safePostDivisor, 2),
+      messagesPerUser: roundMetric(messages / safeUserDivisor, 2),
+    },
   };
 }
 
@@ -699,6 +746,28 @@ const app = new Elysia()
   .get("/api/stats/platform", async () => {
     return getPlatformStats();
   })
+  .get("/api/auth/check-email", async ({ query }) => {
+    const schoolEmail = normalizeEmail(typeof query.schoolEmail === "string" ? query.schoolEmail : "");
+
+    if (!schoolEmail) {
+      return { validFormat: false, available: false };
+    }
+
+    if (!isSchoolEmail(schoolEmail)) {
+      return { validFormat: false, available: false };
+    }
+
+    const [existing] = await db
+      .select({ id: authAccountsTable.id })
+      .from(authAccountsTable)
+      .where(eq(authAccountsTable.schoolEmail, schoolEmail))
+      .limit(1);
+
+    return {
+      validFormat: true,
+      available: !existing,
+    };
+  })
   .post("/api/auth/register", async ({ body, set }) => {
     const payload = body as {
       schoolEmail?: string;
@@ -751,7 +820,7 @@ const app = new Elysia()
     const anonAlias = payload.anonAlias?.trim() || `Member${Math.floor(Math.random() * 10000)}`;
     const anonAvatarSeed = payload.anonAvatarSeed?.trim() || `seed-${crypto.randomUUID()}`;
     const fieldsOfInterest = Array.isArray(payload.fieldsOfInterest)
-      ? payload.fieldsOfInterest.map((item) => item.trim()).filter(Boolean).slice(0, 8)
+      ? payload.fieldsOfInterest.map((item) => item.trim()).filter(Boolean).slice(0, 16)
       : [];
 
     const passwordHash = await Bun.password.hash(password);
@@ -1062,6 +1131,19 @@ const app = new Elysia()
       return { message: "Title and content are required" };
     }
 
+    const moderationViolation = findModerationViolation([
+      { label: "title", value: title },
+      { label: "content", value: content },
+      ...((Array.isArray(payload.tags) ? payload.tags : []).map((tag) => ({
+        label: "tag",
+        value: tag,
+      }))),
+    ]);
+    if (moderationViolation) {
+      set.status = 400;
+      return { message: moderationMessage(moderationViolation.field) };
+    }
+
     const companyId = await resolveCompanyId(payload.companyName, payload.companyId);
     if (payload.companyId && !companyId) {
       set.status = 400;
@@ -1211,6 +1293,12 @@ const app = new Elysia()
       return { message: "Comment content is required" };
     }
 
+    const moderationViolation = findModerationViolation([{ label: "comment", value: content }]);
+    if (moderationViolation) {
+      set.status = 400;
+      return { message: moderationMessage(moderationViolation.field) };
+    }
+
     const [post] = await db
       .select({ id: postsTable.id })
       .from(postsTable)
@@ -1309,25 +1397,40 @@ const app = new Elysia()
         type: "company" as const,
         label: company.name,
         size: Math.max(4, Math.round(company.totalReviews / 6)),
-        group: getCompanyGroup(company.industry),
+        group: "company",
       })),
       ...filteredUsers.map((user) => ({
         id: user.id,
         type: "user" as const,
         label: user.anonAlias,
         size: Math.max(2, Math.round(user.contributionScore / 20)),
-        group: user.fieldsOfInterest[0] ?? "general",
+        group: "user",
       })),
     ];
 
     const nodeIdSet = new Set(nodes.map((node) => node.id));
-    const edges = connections
+    const edgesByPair = new Map<string, { source: string; target: string; weight: number }>();
+    connections
       .filter((edge) => nodeIdSet.has(edge.sourceId) && nodeIdSet.has(edge.targetId))
-      .map((edge) => ({
-        source: edge.sourceId,
-        target: edge.targetId,
-        weight: edge.weight,
-      }));
+      .forEach((edge) => {
+        const sorted = [edge.sourceId, edge.targetId].sort();
+        const left = sorted[0] ?? edge.sourceId;
+        const right = sorted[1] ?? edge.targetId;
+        const key = `${left}:${right}`;
+        const existing = edgesByPair.get(key);
+        if (existing) {
+          existing.weight = Math.max(existing.weight, edge.weight);
+          return;
+        }
+
+        edgesByPair.set(key, {
+          source: left,
+          target: right,
+          weight: edge.weight,
+        });
+      });
+
+    const edges = [...edgesByPair.values()];
 
     return { nodes, edges };
   })
@@ -1567,6 +1670,12 @@ const app = new Elysia()
     if (!content) {
       set.status = 400;
       return { message: "Message content is required" };
+    }
+
+    const moderationViolation = findModerationViolation([{ label: "message", value: content }]);
+    if (moderationViolation) {
+      set.status = 400;
+      return { message: moderationMessage(moderationViolation.field) };
     }
 
     const [participant] = await db

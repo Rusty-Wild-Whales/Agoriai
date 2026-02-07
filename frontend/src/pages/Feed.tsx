@@ -62,14 +62,14 @@ export default function Feed() {
     return result;
   }, [posts, searchQuery, sortBy]);
 
-  const handleCreatePost = (post: {
+  const handleCreatePost = async (post: {
     title: string;
     content: string;
     category: PostCategory;
     tags: string[];
     companyName?: string;
   }) => {
-    createMutation.mutate(post);
+    await createMutation.mutateAsync(post);
   };
 
   return (

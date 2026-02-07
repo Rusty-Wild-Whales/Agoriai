@@ -122,15 +122,19 @@ export default function Nexus() {
 
     const palette = darkMode
       ? {
-          canvas: "#08172f",
-          link: "#52627a",
-          nodeStroke: "#0f172a",
-          label: "#9fb0c8",
+          canvasTop: "#0b1830",
+          canvasBottom: "#071225",
+          tile: "rgba(148, 163, 184, 0.08)",
+          link: "rgba(151, 168, 193, 0.9)",
+          nodeStroke: "#0b1324",
+          label: "#c9d7ec",
         }
       : {
-          canvas: "#f3f6fb",
-          link: "#8ea1b8",
-          nodeStroke: "#f3f6fb",
+          canvasTop: "#f8fbff",
+          canvasBottom: "#ecf2fb",
+          tile: "rgba(71, 85, 105, 0.1)",
+          link: "rgba(100, 116, 139, 0.7)",
+          nodeStroke: "#f8fbff",
           label: "#334155",
         };
 
@@ -181,11 +185,42 @@ export default function Nexus() {
       return [{ source, target, weight: edge.weight }];
     });
 
+    const defs = svg.append("defs");
+    const surfaceGradient = defs
+      .append("linearGradient")
+      .attr("id", "nexus-surface-gradient")
+      .attr("x1", "0%")
+      .attr("y1", "0%")
+      .attr("x2", "0%")
+      .attr("y2", "100%");
+    surfaceGradient.append("stop").attr("offset", "0%").attr("stop-color", palette.canvasTop);
+    surfaceGradient.append("stop").attr("offset", "100%").attr("stop-color", palette.canvasBottom);
+
+    const tilePattern = defs
+      .append("pattern")
+      .attr("id", "nexus-mosaic-tiles")
+      .attr("width", 30)
+      .attr("height", 30)
+      .attr("patternUnits", "userSpaceOnUse");
+    tilePattern
+      .append("path")
+      .attr("d", "M 30 0 L 0 0 0 30")
+      .attr("fill", "none")
+      .attr("stroke", palette.tile)
+      .attr("stroke-width", 0.7);
+
     svg
       .append("rect")
       .attr("width", width)
       .attr("height", height)
-      .attr("fill", palette.canvas);
+      .attr("fill", "url(#nexus-surface-gradient)");
+
+    svg
+      .append("rect")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("fill", "url(#nexus-mosaic-tiles)")
+      .attr("opacity", 0.45);
 
     const g = svg.append("g");
 
@@ -233,8 +268,9 @@ export default function Nexus() {
       .data(edges)
       .join("line")
       .attr("stroke", palette.link)
-      .attr("stroke-opacity", (d) => getEdgeOpacity(d.weight) * 0.65)
-      .attr("stroke-width", (d) => Math.max(0.8, d.weight * 0.55));
+      .attr("stroke-opacity", (d) => getEdgeOpacity(d.weight) * 0.72)
+      .attr("stroke-linecap", "round")
+      .attr("stroke-width", (d) => Math.max(0.9, d.weight * 0.7));
 
     const node = g
       .append("g")
@@ -243,10 +279,10 @@ export default function Nexus() {
       .join("circle")
       .attr("r", (d) => calculateNodeRadius(d))
       .attr("fill", (d) => getNodeColor(d))
-      .attr("opacity", 0.92)
+      .attr("opacity", 0.96)
       .attr("cursor", "pointer")
       .attr("stroke", palette.nodeStroke)
-      .attr("stroke-width", 2);
+      .attr("stroke-width", (d) => (d.type === "company" ? 2.4 : 1.8));
 
     const labels = g
       .append("g")
@@ -256,10 +292,13 @@ export default function Nexus() {
       .text((d) => d.label)
       .attr("text-anchor", "middle")
       .attr("dy", (d) => calculateNodeRadius(d) + 16)
-      .attr("font-size", "11px")
+      .attr("font-size", "11.5px")
       .attr("fill", palette.label)
       .attr("font-family", "Manrope, sans-serif")
-      .attr("font-weight", "600");
+      .attr("font-weight", "650")
+      .attr("paint-order", "stroke")
+      .attr("stroke", darkMode ? "rgba(7,18,37,0.8)" : "rgba(248,251,255,0.85)")
+      .attr("stroke-width", 2.5);
 
     link
       .attr("x1", (d) => d.source.x)
@@ -315,8 +354,8 @@ export default function Nexus() {
       })
       .on("mouseleave", () => {
         setHoveredNode(null);
-        node.attr("opacity", 0.92);
-        link.attr("stroke-opacity", (d) => getEdgeOpacity(d.weight) * 0.65);
+        node.attr("opacity", 0.96);
+        link.attr("stroke-opacity", (d) => getEdgeOpacity(d.weight) * 0.72);
         labels.attr("opacity", 1);
       });
 
@@ -457,13 +496,7 @@ export default function Nexus() {
           <div className="w-3 h-3 rounded-full bg-amber-500" /> <span className="text-slate-500 dark:text-slate-400">Company</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-blue-500" /> <span className="text-slate-500 dark:text-slate-400">Engineering</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> <span className="text-slate-500 dark:text-slate-400">Finance</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-purple-500" /> <span className="text-slate-500 dark:text-slate-400">Consulting</span>
+          <div className="w-3 h-3 rounded-full bg-[#4f7cff]" /> <span className="text-slate-500 dark:text-slate-400">User</span>
         </div>
         <p className="text-slate-500 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 mt-2">Node size = contribution</p>
       </div>
@@ -481,7 +514,7 @@ export default function Nexus() {
               {hoveredNode.label}
             </p>
             <p className="text-xs text-slate-500 capitalize">
-              {hoveredNode.type} - {hoveredNode.group}
+              {hoveredNode.type}
             </p>
             <p className="text-xs text-slate-500 mt-1">Score: {hoveredNode.size}</p>
           </motion.div>

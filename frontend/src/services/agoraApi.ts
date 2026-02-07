@@ -36,6 +36,9 @@ export const agoraApi = {
   login: (payload: { schoolEmail: string; password: string }) =>
     api.post<AuthResponse>("/auth/login", payload),
 
+  checkEmailAvailability: (schoolEmail: string) =>
+    api.get<{ validFormat: boolean; available: boolean }>(`/auth/check-email${toQuery({ schoolEmail })}`),
+
   logout: () => api.post<{ ok: boolean }>("/auth/logout", {}),
 
   deleteAccount: (payload: { password: string }) =>

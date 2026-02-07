@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ThumbsUp, Reply } from "lucide-react";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
 import type { Comment } from "../../types";
 import { formatDate } from "../../utils/helpers";
-import { useAuthStore, useIsAnonymous } from "../../stores/authStore";
+import { useAuthStore } from "../../stores/authStore";
 import { agoraApi } from "../../services/agoraApi";
 import { Markdown } from "../ui/Markdown";
 
@@ -15,7 +15,7 @@ function CommentItem({
   onVoteChange,
 }: {
   comment: Comment;
-  onReply?: (content: string) => void;
+  onReply?: (content: string) => Promise<boolean>;
   onVoteChange?: (commentId: string, nextVote: -1 | 0 | 1) => Promise<void>;
 }) {
   const [showReplyInput, setShowReplyInput] = useState(false);
@@ -47,11 +47,13 @@ function CommentItem({
     }
   };
 
-  const handleReplySubmit = () => {
+  const handleReplySubmit = async () => {
     if (replyText.trim() && onReply) {
-      onReply(replyText);
-      setReplyText("");
-      setShowReplyInput(false);
+      const success = await onReply(replyText);
+      if (success) {
+        setReplyText("");
+        setShowReplyInput(false);
+      }
     }
   };
 
@@ -101,11 +103,21 @@ function CommentItem({
                 type="text"
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleReplySubmit()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    void handleReplySubmit();
+                  }
+                }}
                 placeholder="Write a reply..."
                 className="flex-1 px-3 py-1.5 rounded-xl border border-slate-300/80 dark:border-slate-600/70 bg-white/85 dark:bg-slate-900/60 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
               />
-              <Button size="sm" onClick={handleReplySubmit} disabled={!replyText.trim()}>
+              <Button
+                size="sm"
+                onClick={() => {
+                  void handleReplySubmit();
+                }}
+                disabled={!replyText.trim()}
+              >
                 Reply
               </Button>
             </div>
@@ -157,27 +169,15 @@ export function CommentThread({
   onCommentAdded,
 }: CommentThreadProps) {
   const queryClient = useQueryClient();
-  const { user, getDisplayName } = useAuthStore();
-  const isAnonymous = useIsAnonymous();
+  const { user } = useAuthStore();
   const [threadComments, setThreadComments] = useState<Comment[]>(comments);
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
-  const nextCommentId = useRef(0);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   useEffect(() => {
     setThreadComments(comments);
   }, [comments]);
-
-  const createLocalComment = (content: string): Comment => ({
-    id: `cm-${postId}-${nextCommentId.current++}`,
-    postId,
-    authorId: user?.id || "local-guest",
-    authorAlias: getDisplayName(),
-    content,
-    upvotes: 0,
-    isAnonymous,
-    createdAt: new Date().toISOString(),
-  });
 
   const refreshComments = async () => {
     const latest = await agoraApi.getComments(postId);
@@ -187,6 +187,7 @@ export function CommentThread({
   const handleSubmit = async () => {
     if (!newComment.trim()) return;
     setSubmittingComment(true);
+    setSubmissionError(null);
     try {
       await agoraApi.createComment(postId, {
         content: newComment.trim(),
@@ -197,17 +198,15 @@ export function CommentThread({
       void queryClient.invalidateQueries({ queryKey: ["current-user"] });
     } catch (error) {
       console.error("Failed to submit comment", error);
-      const fallback = createLocalComment(newComment.trim());
-      setThreadComments((prev) => [...prev, fallback]);
-      setNewComment("");
-      onCommentAdded?.();
+      setSubmissionError(error instanceof Error ? error.message : "Failed to submit comment.");
     } finally {
       setSubmittingComment(false);
     }
   };
 
-  const handleReply = async (parentId: string, content: string) => {
+  const handleReply = async (parentId: string, content: string): Promise<boolean> => {
     setSubmittingComment(true);
+    setSubmissionError(null);
     try {
       await agoraApi.createComment(postId, {
         content: content.trim(),
@@ -216,35 +215,14 @@ export function CommentThread({
       await refreshComments();
       onCommentAdded?.();
       void queryClient.invalidateQueries({ queryKey: ["current-user"] });
-      return;
+      return true;
     } catch (error) {
       console.error("Failed to submit reply", error);
+      setSubmissionError(error instanceof Error ? error.message : "Failed to submit reply.");
     } finally {
       setSubmittingComment(false);
     }
-
-    const reply = createLocalComment(content.trim());
-    const appendReply = (items: Comment[]): Comment[] =>
-      items.map((item) => {
-        if (item.id === parentId) {
-          return {
-            ...item,
-            replies: [...(item.replies || []), reply],
-          };
-        }
-
-        if (item.replies?.length) {
-          return {
-            ...item,
-            replies: appendReply(item.replies),
-          };
-        }
-
-        return item;
-      });
-
-    setThreadComments((prev) => appendReply(prev));
-    onCommentAdded?.();
+    return false;
   };
 
   const handleVoteChange = async (commentId: string, nextVote: -1 | 0 | 1) => {
@@ -331,6 +309,11 @@ export function CommentThread({
           </Button>
         </div>
       </div>
+      {submissionError && (
+        <p className="rounded-lg border border-rose-300/70 bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
+          {submissionError}
+        </p>
+      )}
     </div>
   );
 }
