@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -232,25 +232,21 @@ export default function Landing() {
               <StatCard
                 value={platformStats?.users}
                 label="Registered users"
-                delay={0}
                 formatter={(value) => formatCount(value)}
               />
               <StatCard
                 value={platformStats?.posts}
                 label="Posts shared"
-                delay={0.08}
                 formatter={(value) => formatCount(value)}
               />
               <StatCard
                 value={platformStats?.messages}
                 label="Messages exchanged"
-                delay={0.16}
                 formatter={(value) => formatCount(value)}
               />
               <StatCard
                 value={platformStats?.userConnections}
                 label="User connections"
-                delay={0.24}
                 formatter={(value) => formatCount(value)}
               />
             </div>
@@ -263,10 +259,10 @@ export default function Landing() {
             </AnimatedSection>
 
             <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-              <ContextSignalCard value="3x" label="More likely to get interviews with connections" delay={0.04} />
-              <ContextSignalCard value="68%" label="Feel they lack career guidance" delay={0.12} />
-              <ContextSignalCard value="42%" label="Jobs filled via informal networks" delay={0.2} />
-              <ContextSignalCard value="$12K" label="First job salary gap" delay={0.28} />
+              <ContextSignalCard value="3x" label="More likely to get interviews with connections" />
+              <ContextSignalCard value="68%" label="Feel they lack career guidance" />
+              <ContextSignalCard value="42%" label="Jobs filled via informal networks" />
+              <ContextSignalCard value="$12K" label="First job salary gap" />
             </div>
 
             <div className="mt-7 flex justify-center">
@@ -350,59 +346,6 @@ export default function Landing() {
   );
 }
 
-function AnimatedMetricValue({
-  value,
-  inView,
-  formatter,
-}: {
-  value: number | undefined;
-  inView: boolean;
-  formatter: (value: number) => string;
-}) {
-  const [displayValue, setDisplayValue] = useState(0);
-  const hasAnimatedRef = useRef(false);
-  const latestTargetRef = useRef<number | undefined>(value);
-
-  useEffect(() => {
-    if (value === undefined || !inView) {
-      return;
-    }
-
-    if (latestTargetRef.current === value && hasAnimatedRef.current) {
-      return;
-    }
-
-    latestTargetRef.current = value;
-    const from = hasAnimatedRef.current ? displayValue : 0;
-    hasAnimatedRef.current = true;
-    const duration = 900;
-    const start = performance.now();
-
-    let rafId = 0;
-    const animate = (now: number) => {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplayValue(from + (value - from) * eased);
-
-      if (progress < 1) {
-        rafId = requestAnimationFrame(animate);
-      } else {
-        setDisplayValue(value);
-      }
-    };
-
-    rafId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(rafId);
-  }, [displayValue, inView, value]);
-
-  if (value === undefined) {
-    return "—";
-  }
-
-  return formatter(displayValue);
-}
-
 function SectionEyebrow({ label }: { label: string }) {
   return (
     <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-slate-900/60 px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300 shadow-[0_0_0_1px_rgba(245,158,11,0.14)_inset]">
@@ -416,58 +359,36 @@ function SectionEyebrow({ label }: { label: string }) {
 function StatCard({
   value,
   label,
-  delay,
   formatter,
 }: {
   value: number | undefined;
   label: string;
-  delay: number;
   formatter: (value: number) => string;
 }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-12% 0px -18% 0px" });
-
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, delay, ease: [0.25, 0.1, 0.25, 1] }}
-      className="p-6 rounded-xl bg-slate-800/40 border border-slate-600/30 text-center hover:border-amber-500/30 hover:bg-slate-800/60 transition-all duration-300"
-    >
+    <div className="p-6 rounded-xl bg-slate-800/40 border border-slate-600/30 text-center hover:border-amber-500/30 hover:bg-slate-800/60 transition-all duration-300">
       <span className="block font-display text-4xl md:text-5xl font-bold text-amber-400 mb-3">
-        <AnimatedMetricValue value={value} inView={inView} formatter={formatter} />
+        {value === undefined ? "—" : formatter(value)}
       </span>
       <span className="block text-sm text-slate-300 leading-relaxed">
         {label}
       </span>
-    </motion.div>
+    </div>
   );
 }
 
 function ContextSignalCard({
   value,
   label,
-  delay,
 }: {
   value: string;
   label: string;
-  delay: number;
 }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-12% 0px -18% 0px" });
-
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, delay, ease: [0.25, 0.1, 0.25, 1] }}
-      className="p-6 rounded-xl bg-slate-800/40 border border-slate-600/30 text-center hover:border-amber-500/30 hover:bg-slate-800/60 transition-all duration-300"
-    >
+    <div className="p-6 rounded-xl bg-slate-800/40 border border-slate-600/30 text-center hover:border-amber-500/30 hover:bg-slate-800/60 transition-all duration-300">
       <span className="block font-display text-4xl md:text-5xl font-bold text-amber-400 mb-3">{value}</span>
       <span className="block text-sm text-slate-300 leading-relaxed">{label}</span>
-    </motion.div>
+    </div>
   );
 }
 
