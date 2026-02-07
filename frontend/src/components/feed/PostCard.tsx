@@ -63,6 +63,7 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
       if (downvoted) {
         setDownvoted(false);
         setVoteCount((v) => v + 2);
+        onUpvote(post.id);
       } else {
         setVoteCount((v) => v + 1);
         onUpvote(post.id);

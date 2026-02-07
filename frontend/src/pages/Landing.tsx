@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { ArrowRight, ChevronDown } from "lucide-react";
@@ -9,37 +9,47 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-// Floating star field — fewer, softer stars that gently drift
+// Floating star field with independent trajectories for each star.
 export function StarField() {
-  const stars = Array.from({ length: 90 }, (_, i) => {
-    const base = i + 1;
-    const baseOpacity = seededRandom(base) * 0.4 + 0.15;
-    const colorValue = seededRandom(base * 17);
+  const stars = useMemo(
+    () =>
+      Array.from({ length: 110 }, (_, i) => {
+        const base = i + 1;
+        const baseOpacity = seededRandom(base * 31) * 0.45 + 0.2;
+        const colorValue = seededRandom(base * 17);
+        const driftX = Math.round((seededRandom(base * 43) * 16 + 6) * (base % 2 ? 1 : -1));
+        const driftY = Math.round((seededRandom(base * 47) * 14 + 5) * (base % 3 ? 1 : -1));
 
-    return {
-      id: i,
-      x: seededRandom(base * 2) * 100,
-      y: seededRandom(base * 3) * 100,
-      size: seededRandom(base * 5) * 2.5 + 0.8,
-      opacity: baseOpacity,
-      delay: seededRandom(base * 7) * 10,
-      duration: seededRandom(base * 11) * 4 + 4,
-      driftDuration: seededRandom(base * 13) * 15 + 12,
-      animation: seededRandom(base * 19) > 0.3 ? "star-drift" : "star-shimmer",
-      color: colorValue > 0.8
-        ? "bg-white"
-        : colorValue > 0.5
-        ? "bg-slate-300"
-        : "bg-slate-400/80",
-    };
-  });
+        return {
+          id: i,
+          x: seededRandom(base * 2) * 100,
+          y: seededRandom(base * 3) * 100,
+          size: seededRandom(base * 5) * 2.6 + 0.8,
+          opacity: baseOpacity,
+          delay: seededRandom(base * 7) * 8,
+          floatDuration: seededRandom(base * 11) * 8 + 9,
+          glintDuration: seededRandom(base * 13) * 3 + 2.4,
+          driftX,
+          driftY,
+          scaleStart: seededRandom(base * 53) * 0.35 + 0.95,
+          scaleMid: seededRandom(base * 59) * 0.45 + 1.12,
+          color:
+            colorValue > 0.8
+              ? "bg-white"
+              : colorValue > 0.45
+                ? "bg-slate-200"
+                : "bg-amber-100",
+        };
+      }),
+    []
+  );
 
   return (
     <div className="absolute inset-0 overflow-hidden">
       {stars.map((star) => (
         <div
           key={star.id}
-          className={`absolute rounded-full ${star.color} ${star.animation}`}
+          className={`absolute rounded-full star-float ${star.color}`}
           style={{
             left: `${star.x}%`,
             top: `${star.y}%`,
@@ -47,8 +57,12 @@ export function StarField() {
             height: star.size,
             "--star-base-opacity": star.opacity,
             "--star-delay": `${star.delay}s`,
-            "--star-duration": `${star.duration}s`,
-            "--star-drift-duration": `${star.driftDuration}s`,
+            "--star-float-duration": `${star.floatDuration}s`,
+            "--star-glint-duration": `${star.glintDuration}s`,
+            "--star-drift-x": `${star.driftX}px`,
+            "--star-drift-y": `${star.driftY}px`,
+            "--star-scale-start": star.scaleStart,
+            "--star-scale-mid": star.scaleMid,
           } as React.CSSProperties}
         />
       ))}

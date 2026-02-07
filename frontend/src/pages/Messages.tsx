@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { Send, Eye, AlertCircle, UserCheck, Sparkles } from "lucide-react";
 import { Avatar } from "../components/ui/Avatar";
@@ -78,6 +78,13 @@ export default function Messages() {
   }, [messages]);
 
   const activeConv = conversations.find((c) => c.id === activeConvId);
+  const sortedConversations = useMemo(
+    () =>
+      [...conversations].sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      ),
+    [conversations]
+  );
   const otherParticipant = activeConv?.participants.find(
     (p) => p.userId !== currentUserId
   );
@@ -85,8 +92,9 @@ export default function Messages() {
   const hasRevealedIdentity = activeConvId ? !!revealedIdentities[activeConvId] : false;
 
   const handleSend = async () => {
-    if (!newMessage.trim() || !activeConvId) return;
-    const msg = await mockApi.sendMessage(activeConvId, newMessage);
+    const trimmed = newMessage.trim();
+    if (!trimmed || !activeConvId) return;
+    const msg = await mockApi.sendMessage(activeConvId, trimmed);
     setMessages((prev) => [...prev, msg]);
     setConversations((prev) =>
       prev.map((conv) =>
@@ -148,7 +156,7 @@ export default function Messages() {
           </h2>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {conversations.map((conv) => {
+          {sortedConversations.map((conv) => {
             const other = conv.participants.find(
               (p) => p.userId !== currentUserId
             );
@@ -190,7 +198,7 @@ export default function Messages() {
       </div>
 
       {/* Chat View */}
-      <div className="flex-1 flex flex-col">
+      <div data-tutorial="messages-chat" className="flex-1 flex flex-col">
         {activeConv ? (
           <>
             {/* Chat header */}

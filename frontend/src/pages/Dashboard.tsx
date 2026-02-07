@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import {
@@ -74,23 +74,26 @@ function AnimatedCounter({ value, label, icon: Icon, accent = false }: { value: 
 
 export default function Dashboard() {
   const { user } = useAuthStore();
-  const { startTutorial, completedTutorials } = useTutorial();
+  const { startTutorial, completedTutorials, activeTutorial } = useTutorial();
+  const autoStartAttemptedRef = useRef(false);
   const stats = user?.stats;
-  const recentPosts = mockPosts.slice(0, 5);
-  const trendingPosts = [...mockPosts].sort((a, b) => b.upvotes - a.upvotes).slice(0, 5);
+  const recentPosts = useMemo(() => mockPosts.slice(0, 5), []);
+  const trendingPosts = useMemo(
+    () => [...mockPosts].sort((a, b) => b.upvotes - a.upvotes).slice(0, 5),
+    []
+  );
 
   const showWelcomeBanner = !completedTutorials.includes("welcome");
 
   // Auto-start tutorial for first-time users
   useEffect(() => {
-    if (showWelcomeBanner) {
-      // Small delay to let the page render first
-      const timer = setTimeout(() => {
-        startTutorial("welcome");
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [showWelcomeBanner, startTutorial]);
+    if (!showWelcomeBanner || activeTutorial || autoStartAttemptedRef.current) return;
+    autoStartAttemptedRef.current = true;
+    const timer = setTimeout(() => {
+      startTutorial("welcome");
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [showWelcomeBanner, activeTutorial, startTutorial]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
@@ -134,7 +137,7 @@ export default function Dashboard() {
         <h2 className="font-display text-2xl font-semibold text-slate-900 dark:text-white">
           {showWelcomeBanner ? "Your Dashboard" : `Welcome back, ${user?.anonAlias || "Explorer"}`}
         </h2>
-        <p className="text-slate-500 mt-1">
+        <p className="text-slate-600 dark:text-slate-400 mt-1">
           {stats
             ? `You've answered ${stats.questionsAnswered} questions this week. The Agora grows stronger.`
             : "Your contributions shape the community."}
@@ -234,7 +237,7 @@ export default function Dashboard() {
                     <span className="text-xs text-slate-500">
                       {post.authorAlias}
                     </span>
-                    <span className="text-xs text-slate-600">
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
                       {post.upvotes} upvotes
                     </span>
                   </div>

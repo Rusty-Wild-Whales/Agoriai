@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "../ui/Button";
+import { useUIStore } from "../../stores/uiStore";
 
 // Tutorial step definition
 export interface TutorialStep {
@@ -93,8 +94,8 @@ export const tutorials: Record<string, Tutorial> = {
         id: "messages-content",
         title: "Private Conversations",
         content: "Your messages are private and start anonymous. When trust is established, you can choose to reveal your real identity — a meaningful moment in the Agora.",
-        target: "[data-tutorial='messages-panel']",
-        position: "bottom",
+        target: "[data-tutorial='messages-chat']",
+        position: "top",
         navigate: "/messages",
       },
       {
@@ -251,9 +252,12 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   }, [currentStep, activeTutorial, navigate]);
 
   const skipTutorial = useCallback(() => {
+    if (activeTutorial) {
+      markComplete(activeTutorial.id);
+    }
     setActiveTutorial(null);
     setCurrentStep(0);
-  }, []);
+  }, [activeTutorial, markComplete]);
 
   return (
     <TutorialContext.Provider
@@ -283,10 +287,12 @@ interface SpotlightRect {
 }
 
 function TutorialOverlay() {
+  const darkMode = useUIStore((state) => state.darkMode);
   const { activeTutorial, currentStep, nextStep, prevStep, skipTutorial } = useTutorial();
   const [targetRect, setTargetRect] = useState<SpotlightRect | null>(null);
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   const [isWaitingForTarget, setIsWaitingForTarget] = useState(false);
+  const [tooltipPlacement, setTooltipPlacement] = useState<"top" | "bottom" | "left" | "right">("bottom");
 
   const step = activeTutorial?.steps[currentStep];
   const hasTarget = step?.target && step.position !== "center";
@@ -296,6 +302,7 @@ function TutorialOverlay() {
     if (!step?.target || step.position === "center") {
       setTargetRect(null);
       setIsWaitingForTarget(false);
+      setTooltipPlacement("bottom");
       return;
     }
 
@@ -322,32 +329,61 @@ function TutorialOverlay() {
         const viewportPadding = 16;
         let top = Math.max(viewportPadding, rect.bottom + gap);
         let left = Math.max(viewportPadding, rect.left + rect.width / 2 - tooltipWidth / 2);
+        let placement: "top" | "bottom" | "left" | "right" =
+          step.position && step.position !== "center" ? step.position : "bottom";
 
-        switch (step.position) {
+        const hasRoomAbove = rect.top - tooltipHeight - gap >= viewportPadding;
+        const hasRoomBelow = rect.bottom + tooltipHeight + gap <= window.innerHeight - viewportPadding;
+        const hasRoomLeft = rect.left - tooltipWidth - gap >= viewportPadding;
+        const hasRoomRight = rect.right + tooltipWidth + gap <= window.innerWidth - viewportPadding;
+
+        switch (placement) {
           case "top":
-            top = rect.top - tooltipHeight - gap;
-            if (top < viewportPadding) {
+            if (hasRoomAbove) {
+              top = rect.top - tooltipHeight - gap;
+            } else if (hasRoomBelow) {
               top = rect.bottom + gap;
+              placement = "bottom";
+            } else {
+              top = viewportPadding;
             }
             break;
           case "bottom":
-            top = rect.bottom + gap;
-            if (top + tooltipHeight > window.innerHeight - viewportPadding) {
+            if (hasRoomBelow) {
+              top = rect.bottom + gap;
+            } else if (hasRoomAbove) {
               top = rect.top - tooltipHeight - gap;
+              placement = "top";
+            } else {
+              top = window.innerHeight - tooltipHeight - viewportPadding;
             }
             break;
           case "left":
-            top = rect.top + rect.height / 2 - tooltipHeight / 2;
-            left = rect.left - tooltipWidth - gap;
-            if (left < viewportPadding) {
+            if (hasRoomLeft) {
+              top = rect.top + rect.height / 2 - tooltipHeight / 2;
+              left = rect.left - tooltipWidth - gap;
+            } else if (hasRoomRight) {
+              top = rect.top + rect.height / 2 - tooltipHeight / 2;
               left = rect.right + gap;
+              placement = "right";
+            } else {
+              top = rect.top - tooltipHeight - gap;
+              left = rect.left + rect.width / 2 - tooltipWidth / 2;
+              placement = "top";
             }
             break;
           case "right":
-            top = rect.top + rect.height / 2 - tooltipHeight / 2;
-            left = rect.right + gap;
-            if (left + tooltipWidth > window.innerWidth - viewportPadding) {
+            if (hasRoomRight) {
+              top = rect.top + rect.height / 2 - tooltipHeight / 2;
+              left = rect.right + gap;
+            } else if (hasRoomLeft) {
+              top = rect.top + rect.height / 2 - tooltipHeight / 2;
               left = rect.left - tooltipWidth - gap;
+              placement = "left";
+            } else {
+              top = rect.top - tooltipHeight - gap;
+              left = rect.left + rect.width / 2 - tooltipWidth / 2;
+              placement = "top";
             }
             break;
         }
@@ -362,6 +398,7 @@ function TutorialOverlay() {
         );
 
         setTooltipStyle({ top, left });
+        setTooltipPlacement(placement);
       } else {
         attempts++;
         if (attempts <= maxAttempts) {
@@ -391,6 +428,7 @@ function TutorialOverlay() {
 
   const isFirst = currentStep === 0;
   const isLast = currentStep === activeTutorial.steps.length - 1;
+  const overlayFill = darkMode ? "rgba(2, 6, 23, 0.8)" : "rgba(15, 23, 42, 0.46)";
 
   return (
     <AnimatePresence>
@@ -423,7 +461,7 @@ function TutorialOverlay() {
           <rect
             width="100%"
             height="100%"
-            fill="rgba(15, 23, 42, 0.85)"
+            fill={overlayFill}
             mask="url(#spotlight-mask)"
             style={{ backdropFilter: "blur(4px)" }}
           />
@@ -478,26 +516,26 @@ function TutorialOverlay() {
           }`}
           style={effectiveHasTarget ? tooltipStyle : {}}
         >
-          <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-700 overflow-hidden">
+          <div className="mosaic-panel rounded-2xl shadow-2xl border border-slate-200/70 dark:border-slate-700/70 overflow-hidden">
             {/* Header */}
-            <div className="px-5 pt-5 pb-3 border-b border-slate-800">
+            <div className="px-5 pt-5 pb-3 border-b border-slate-200/70 dark:border-slate-700/70">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-xl bg-amber-500/20">
                     <Sparkles size={18} className="text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 mb-0.5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">
                       {activeTutorial.name} — Step {currentStep + 1} of {activeTutorial.steps.length}
                     </p>
-                    <h3 className="font-display font-semibold text-white">
+                    <h3 className="font-display font-semibold text-slate-900 dark:text-white">
                       {step.title}
                     </h3>
                   </div>
                 </div>
                 <button
                   onClick={skipTutorial}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -506,7 +544,7 @@ function TutorialOverlay() {
 
             {/* Content */}
             <div className="px-5 py-4">
-              <p className="text-slate-300 leading-relaxed text-sm">
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm">
                 {step.content}
               </p>
               {step.action && (
@@ -517,14 +555,14 @@ function TutorialOverlay() {
             </div>
 
             {/* Footer */}
-            <div className="px-5 py-3 bg-slate-800/50 flex items-center justify-between">
+            <div className="px-5 py-3 bg-slate-100/70 dark:bg-slate-800/50 border-t border-slate-200/70 dark:border-slate-700/70 flex items-center justify-between">
               <button
                 onClick={prevStep}
                 disabled={isFirst}
                 className={`flex items-center gap-1 text-sm font-medium transition-colors cursor-pointer ${
                   isFirst
                     ? "text-slate-600 cursor-not-allowed"
-                    : "text-slate-400 hover:text-white"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <ChevronLeft size={16} />
@@ -540,7 +578,7 @@ function TutorialOverlay() {
                         ? "bg-amber-500"
                         : i < currentStep
                         ? "bg-amber-700"
-                        : "bg-slate-600"
+                        : "bg-slate-400 dark:bg-slate-600"
                     }`}
                   />
                 ))}
@@ -557,14 +595,22 @@ function TutorialOverlay() {
           {effectiveHasTarget && targetRect && (
             <div
               className={`absolute w-0 h-0 ${
-                step.position === "top"
-                  ? "bottom-[-8px] left-1/2 -translate-x-1/2 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-slate-700"
-                  : step.position === "bottom"
-                  ? "top-[-8px] left-1/2 -translate-x-1/2 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-slate-700"
-                  : step.position === "left"
-                  ? "right-[-8px] top-1/2 -translate-y-1/2 border-t-8 border-b-8 border-l-8 border-t-transparent border-b-transparent border-l-slate-700"
-                  : step.position === "right"
-                  ? "left-[-8px] top-1/2 -translate-y-1/2 border-t-8 border-b-8 border-r-8 border-t-transparent border-b-transparent border-r-slate-700"
+                tooltipPlacement === "top"
+                  ? `bottom-[-8px] left-1/2 -translate-x-1/2 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent ${
+                      darkMode ? "border-t-slate-700" : "border-t-slate-300"
+                    }`
+                  : tooltipPlacement === "bottom"
+                  ? `top-[-8px] left-1/2 -translate-x-1/2 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent ${
+                      darkMode ? "border-b-slate-700" : "border-b-slate-300"
+                    }`
+                  : tooltipPlacement === "left"
+                  ? `right-[-8px] top-1/2 -translate-y-1/2 border-t-8 border-b-8 border-l-8 border-t-transparent border-b-transparent ${
+                      darkMode ? "border-l-slate-700" : "border-l-slate-300"
+                    }`
+                  : tooltipPlacement === "right"
+                  ? `left-[-8px] top-1/2 -translate-y-1/2 border-t-8 border-b-8 border-r-8 border-t-transparent border-b-transparent ${
+                      darkMode ? "border-r-slate-700" : "border-r-slate-300"
+                    }`
                   : ""
               }`}
             />

@@ -134,23 +134,23 @@ export default function Onboarding() {
 
       <div className="flex-1 space-y-5">
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">University</label>
+          <label className="block text-sm font-medium text-slate-200 mb-2">University</label>
           <input
             type="text"
             placeholder="e.g. Stanford University"
             value={university}
             onChange={(e) => setUniversity(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-colors"
+            className="w-full px-4 py-3 rounded-xl bg-slate-900/55 border border-slate-600/75 text-white placeholder-slate-400 focus:outline-none focus:border-amber-500/60 transition-colors"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Expected Graduation Year</label>
+          <label className="block text-sm font-medium text-slate-200 mb-2">Expected Graduation Year</label>
           <input
             type="number"
             placeholder="2026"
             value={gradYear}
             onChange={(e) => setGradYear(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-colors"
+            className="w-full px-4 py-3 rounded-xl bg-slate-900/55 border border-slate-600/75 text-white placeholder-slate-400 focus:outline-none focus:border-amber-500/60 transition-colors"
           />
         </div>
       </div>
@@ -195,7 +195,7 @@ export default function Onboarding() {
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer ${
                 selected
                   ? "bg-amber-500 text-slate-900"
-                  : "bg-slate-800/50 text-slate-300 border border-slate-700 hover:border-slate-500"
+                  : "bg-slate-900/55 text-slate-300 border border-slate-600/75 hover:border-slate-400"
               }`}
             >
               {interest}
@@ -258,6 +258,7 @@ export default function Onboarding() {
     <div className="min-h-screen relative overflow-hidden">
       <div className="fixed inset-0 overflow-hidden bg-[#060e1b]">
         <StarField />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.16),transparent_46%),radial-gradient(circle_at_80%_12%,rgba(59,130,246,0.18),transparent_54%)]" />
       </div>
 
       <div className="relative z-10 min-h-screen flex items-center justify-center p-6">
@@ -278,7 +279,7 @@ export default function Onboarding() {
             {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-1 flex-1 rounded-full overflow-hidden bg-slate-800"
+                className="h-1.5 flex-1 rounded-full overflow-hidden bg-slate-800/85"
               >
                 <motion.div
                   className="h-full bg-amber-500"
@@ -295,7 +296,7 @@ export default function Onboarding() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-slate-900/70 backdrop-blur-sm rounded-2xl p-8 min-h-[460px] flex flex-col border border-slate-800/50"
+            className="bg-slate-900/78 backdrop-blur-md rounded-2xl p-8 min-h-[460px] flex flex-col border border-slate-700/70 shadow-[0_16px_44px_rgba(2,6,23,0.52)]"
           >
             <AnimatePresence mode="wait" custom={direction}>
               {stepContent[step]}
@@ -303,7 +304,7 @@ export default function Onboarding() {
           </motion.div>
 
           {/* Step indicator */}
-          <p className="text-center text-sm text-slate-600 mt-4">
+          <p className="text-center text-sm text-slate-400 mt-4">
             Step {step + 1} of 4
           </p>
         </div>

@@ -44,18 +44,18 @@
 }
 
 :root {
-  --app-bg: #f4f0e7;
+  --app-bg: #eef2f7;
   --app-fg: #1f2937;
-  --surface-0: rgba(255, 255, 255, 0.8);
-  --surface-1: rgba(255, 255, 255, 0.94);
+  --surface-0: rgba(255, 255, 255, 0.9);
+  --surface-1: rgba(255, 255, 255, 0.97);
   --surface-2: rgba(255, 255, 255, 1);
   --surface-hover: rgba(255, 255, 255, 1);
   --border-soft: rgba(148, 163, 184, 0.32);
   --border-strong: rgba(100, 116, 139, 0.42);
   --ring-accent: rgba(245, 158, 11, 0.42);
-  --mosaic-a: rgba(245, 158, 11, 0.2);
-  --mosaic-b: rgba(14, 116, 144, 0.14);
-  --mosaic-c: rgba(2, 132, 199, 0.1);
+  --mosaic-a: rgba(245, 158, 11, 0.13);
+  --mosaic-b: rgba(14, 116, 144, 0.1);
+  --mosaic-c: rgba(2, 132, 199, 0.08);
   --shadow-soft: 0 12px 34px rgba(15, 23, 42, 0.08);
 }
 
@@ -96,7 +96,7 @@ body {
     radial-gradient(circle at 12% 18%, var(--mosaic-a) 0%, transparent 48%),
     radial-gradient(circle at 88% 0%, var(--mosaic-b) 0%, transparent 52%),
     radial-gradient(circle at 72% 72%, var(--mosaic-c) 0%, transparent 48%),
-    linear-gradient(140deg, transparent 0%, rgba(255, 255, 255, 0.2) 100%);
+    linear-gradient(140deg, transparent 0%, rgba(255, 255, 255, 0.08) 100%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -119,8 +119,8 @@ body {
     linear-gradient(45deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
     linear-gradient(-45deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
   background-size: 26px 26px, 36px 36px;
-  opacity: 0.34;
-  mix-blend-mode: soft-light;
+  opacity: 0.16;
+  mix-blend-mode: normal;
 }
 
 .mosaic-surface {
@@ -171,36 +171,61 @@ body {
   background-clip: padding-box;
 }
 
-@keyframes twinkle {
-  0%, 100% { opacity: var(--star-base-opacity, 0.2); transform: scale(1); }
-  50% { opacity: calc(var(--star-base-opacity, 0.2) + 0.3); transform: scale(1.2); }
+@keyframes star-float {
+  0% {
+    transform: translate3d(0, 0, 0) scale(var(--star-scale-start, 1));
+  }
+  25% {
+    transform: translate3d(
+        var(--star-drift-x, 8px),
+        calc(var(--star-drift-y, -8px) * 0.38),
+        0
+      )
+      scale(var(--star-scale-mid, 1.16));
+  }
+  50% {
+    transform: translate3d(
+        calc(var(--star-drift-x, 8px) * -0.82),
+        var(--star-drift-y, -8px),
+        0
+      )
+      scale(var(--star-scale-start, 1));
+  }
+  75% {
+    transform: translate3d(
+        calc(var(--star-drift-x, 8px) * 0.3),
+        calc(var(--star-drift-y, -8px) * -0.52),
+        0
+      )
+      scale(calc((var(--star-scale-start, 1) + var(--star-scale-mid, 1.16)) / 2));
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(var(--star-scale-start, 1));
+  }
 }
 
-@keyframes drift {
-  0% { transform: translate(0, 0); }
-  20% { transform: translate(3px, -4px); }
-  40% { transform: translate(-2px, 2px); }
-  60% { transform: translate(4px, 1px); }
-  80% { transform: translate(-3px, -2px); }
-  100% { transform: translate(0, 0); }
+@keyframes star-glint {
+  0%,
+  100% {
+    opacity: var(--star-base-opacity, 0.2);
+    filter: brightness(0.82);
+  }
+  35% {
+    opacity: calc(var(--star-base-opacity, 0.2) + 0.42);
+    filter: brightness(1.24);
+  }
+  70% {
+    opacity: calc(var(--star-base-opacity, 0.2) + 0.18);
+    filter: brightness(1.04);
+  }
 }
 
-@keyframes shimmer {
-  0%, 100% { opacity: var(--star-base-opacity, 0.2); }
-  50% { opacity: calc(var(--star-base-opacity, 0.2) + 0.25); }
-}
-
-.star-twinkle {
-  animation: twinkle var(--star-duration, 4s) ease-in-out var(--star-delay, 0s) infinite;
-}
-
-.star-drift {
-  animation: drift var(--star-drift-duration, 18s) ease-in-out var(--star-delay, 0s) infinite,
-    shimmer var(--star-duration, 5s) ease-in-out var(--star-delay, 0s) infinite;
-}
-
-.star-shimmer {
-  animation: shimmer var(--star-duration, 3s) ease-in-out var(--star-delay, 0s) infinite;
+.star-float {
+  animation: star-float var(--star-float-duration, 12s)
+      cubic-bezier(0.45, 0.08, 0.52, 0.96) var(--star-delay, 0s) infinite,
+    star-glint var(--star-glint-duration, 3.8s) ease-in-out var(--star-delay, 0s)
+      infinite;
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {

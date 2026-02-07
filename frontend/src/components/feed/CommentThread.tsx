@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ThumbsUp, Reply } from "lucide-react";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
@@ -124,27 +124,61 @@ interface CommentThreadProps {
 export function CommentThread({ postId, comments = [], loading = false, onCommentAdded }: CommentThreadProps) {
   const { user, getDisplayName } = useAuthStore();
   const isAnonymous = useIsAnonymous();
+  const [threadComments, setThreadComments] = useState<Comment[]>(comments);
   const [addedComments, setAddedComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
+  const nextCommentId = useRef(0);
+
+  useEffect(() => {
+    setThreadComments(comments);
+  }, [comments]);
+
+  const createComment = (content: string): Comment => ({
+    id: `cm-${postId}-${nextCommentId.current++}`,
+    postId,
+    authorId: user?.id || "u1",
+    authorAlias: getDisplayName(),
+    content,
+    upvotes: 0,
+    isAnonymous,
+    createdAt: new Date().toISOString(),
+  });
 
   const handleSubmit = () => {
     if (!newComment.trim()) return;
-    const comment: Comment = {
-      id: `cm-${Date.now()}`,
-      postId,
-      authorId: user?.id || "u1",
-      authorAlias: getDisplayName(),
-      content: newComment,
-      upvotes: 0,
-      isAnonymous,
-      createdAt: new Date().toISOString(),
-    };
+    const comment = createComment(newComment.trim());
     setAddedComments((prev) => [...prev, comment]);
     setNewComment("");
     onCommentAdded?.();
   };
 
-  const displayComments = [...comments, ...addedComments];
+  const handleReply = (parentId: string, content: string) => {
+    const reply = createComment(content.trim());
+    const appendReply = (items: Comment[]): Comment[] =>
+      items.map((item) => {
+        if (item.id === parentId) {
+          return {
+            ...item,
+            replies: [...(item.replies || []), reply],
+          };
+        }
+
+        if (item.replies?.length) {
+          return {
+            ...item,
+            replies: appendReply(item.replies),
+          };
+        }
+
+        return item;
+      });
+
+    setThreadComments((prev) => appendReply(prev));
+    setAddedComments((prev) => appendReply(prev));
+    onCommentAdded?.();
+  };
+
+  const displayComments = [...threadComments, ...addedComments];
 
   return (
     <div className="p-5 space-y-4">
@@ -166,7 +200,11 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
         </p>
       ) : (
         displayComments.map((comment) => (
-          <CommentItem key={comment.id} comment={comment} />
+          <CommentItem
+            key={comment.id}
+            comment={comment}
+            onReply={(content) => handleReply(comment.id, content)}
+          />
         ))
       )}
 
