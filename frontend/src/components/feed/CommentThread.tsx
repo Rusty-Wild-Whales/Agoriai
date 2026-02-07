@@ -6,20 +6,43 @@ import type { Comment } from "../../types";
 import { formatDate } from "../../utils/helpers";
 import { useAuthStore, useIsAnonymous } from "../../stores/authStore";
 import { agoraApi } from "../../services/agoraApi";
+import { Markdown } from "../ui/Markdown";
 
-function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (content: string) => void }) {
+function CommentItem({
+  comment,
+  onReply,
+  onVoteChange,
+}: {
+  comment: Comment;
+  onReply?: (content: string) => void;
+  onVoteChange?: (commentId: string, nextVote: -1 | 0 | 1) => Promise<void>;
+}) {
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [replyText, setReplyText] = useState("");
-  const [upvoted, setUpvoted] = useState(false);
+  const [upvoted, setUpvoted] = useState(comment.upvotes > 0);
   const [upvoteCount, setUpvoteCount] = useState(comment.upvotes);
+  const [voting, setVoting] = useState(false);
 
-  const handleUpvote = () => {
-    if (upvoted) {
-      setUpvoted(false);
-      setUpvoteCount((c) => c - 1);
-    } else {
-      setUpvoted(true);
-      setUpvoteCount((c) => c + 1);
+  useEffect(() => {
+    setUpvoted(comment.upvotes > 0);
+    setUpvoteCount(comment.upvotes);
+  }, [comment.id, comment.upvotes]);
+
+  const handleUpvote = async () => {
+    const nextVote: -1 | 0 | 1 = upvoted ? 0 : 1;
+    const delta = nextVote === 1 ? 1 : -1;
+    setUpvoted(nextVote === 1);
+    setUpvoteCount((current) => current + delta);
+
+    try {
+      setVoting(true);
+      await onVoteChange?.(comment.id, nextVote);
+    } catch (error) {
+      console.error("Failed to update comment vote", error);
+      setUpvoted((current) => !current);
+      setUpvoteCount((current) => current - delta);
+    } finally {
+      setVoting(false);
     }
   };
 
@@ -44,12 +67,16 @@ function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (conten
               {formatDate(comment.createdAt)}
             </span>
           </div>
-          <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">
-            {comment.content}
-          </p>
+          <Markdown
+            content={comment.content}
+            className="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300"
+          />
           <div className="flex items-center gap-3 mt-2">
             <button
-              onClick={handleUpvote}
+              onClick={() => {
+                void handleUpvote();
+              }}
+              disabled={voting}
               className={`flex items-center gap-1 text-xs transition-colors cursor-pointer ${
                 upvoted ? "text-amber-500" : "text-slate-400 hover:text-amber-500"
               }`}
@@ -100,9 +127,7 @@ function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (conten
                     {formatDate(reply.createdAt)}
                   </span>
                 </div>
-                <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">
-                  {reply.content}
-                </p>
+                <Markdown content={reply.content} className="mt-1 text-sm text-slate-700 dark:text-slate-300" />
                 <button className="flex items-center gap-1 text-xs text-slate-400 hover:text-amber-500 mt-1.5 transition-colors cursor-pointer">
                   <ThumbsUp size={12} /> {reply.upvotes}
                 </button>
@@ -118,11 +143,18 @@ function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (conten
 interface CommentThreadProps {
   postId: string;
   comments?: Comment[];
+  error?: string | null;
   loading?: boolean;
   onCommentAdded?: () => void;
 }
 
-export function CommentThread({ postId, comments = [], loading = false, onCommentAdded }: CommentThreadProps) {
+export function CommentThread({
+  postId,
+  comments = [],
+  error = null,
+  loading = false,
+  onCommentAdded,
+}: CommentThreadProps) {
   const { user, getDisplayName } = useAuthStore();
   const isAnonymous = useIsAnonymous();
   const [threadComments, setThreadComments] = useState<Comment[]>(comments);
@@ -137,7 +169,7 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
   const createLocalComment = (content: string): Comment => ({
     id: `cm-${postId}-${nextCommentId.current++}`,
     postId,
-    authorId: user?.id || "u1",
+    authorId: user?.id || "local-guest",
     authorAlias: getDisplayName(),
     content,
     upvotes: 0,
@@ -156,7 +188,6 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
     try {
       await agoraApi.createComment(postId, {
         content: newComment.trim(),
-        authorId: user?.id,
       });
       await refreshComments();
       setNewComment("");
@@ -178,7 +209,6 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
       await agoraApi.createComment(postId, {
         content: content.trim(),
         parentCommentId: parentId,
-        authorId: user?.id,
       });
       await refreshComments();
       onCommentAdded?.();
@@ -213,6 +243,25 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
     onCommentAdded?.();
   };
 
+  const handleVoteChange = async (commentId: string, nextVote: -1 | 0 | 1) => {
+    const result = await agoraApi.voteComment(commentId, nextVote);
+
+    const updateById = (items: Comment[]): Comment[] =>
+      items.map((item) => {
+        if (item.id === result.id) {
+          return { ...item, upvotes: result.upvotes };
+        }
+
+        if (item.replies?.length) {
+          return { ...item, replies: updateById(item.replies) };
+        }
+
+        return item;
+      });
+
+    setThreadComments((prev) => updateById(prev));
+  };
+
   return (
     <div className="p-5 space-y-4">
       {loading ? (
@@ -227,6 +276,10 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
             </div>
           ))}
         </div>
+      ) : error ? (
+        <p className="rounded-lg border border-rose-300/70 bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
+          {error}
+        </p>
       ) : threadComments.length === 0 ? (
         <p className="text-sm text-slate-400 text-center py-4">
           No comments yet. Be the first to respond.
@@ -237,6 +290,7 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
             key={comment.id}
             comment={comment}
             onReply={(content) => handleReply(comment.id, content)}
+            onVoteChange={handleVoteChange}
           />
         ))
       )}

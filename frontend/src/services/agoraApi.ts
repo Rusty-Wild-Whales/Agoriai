@@ -1,5 +1,14 @@
 import { api } from "./api";
-import type { Comment, Company, Conversation, GraphData, Message, Post, User } from "../types";
+import type {
+  AuthResponse,
+  Comment,
+  Company,
+  Conversation,
+  GraphData,
+  Message,
+  Post,
+  User,
+} from "../types";
 
 function toQuery(params: Record<string, string | number | undefined>) {
   const search = new URLSearchParams();
@@ -12,11 +21,32 @@ function toQuery(params: Record<string, string | number | undefined>) {
 }
 
 export const agoraApi = {
-  getCurrentUser: (userId?: string) => api.get<User>(`/users/me${toQuery({ userId })}`),
+  register: (payload: {
+    schoolEmail: string;
+    password: string;
+    realName?: string;
+    university: string;
+    graduationYear: number;
+    fieldsOfInterest: string[];
+    anonAlias: string;
+    anonAvatarSeed: string;
+  }) => api.post<AuthResponse>("/auth/register", payload),
+
+  login: (payload: { schoolEmail: string; password: string }) =>
+    api.post<AuthResponse>("/auth/login", payload),
+
+  logout: () => api.post<{ ok: boolean }>("/auth/logout", {}),
+
+  getCurrentUser: () => api.get<User>("/users/me"),
 
   getUser: (id: string) => api.get<User>(`/users/${id}`),
 
+  searchUsers: (q?: string, limit = 20) => api.get<User[]>(`/users${toQuery({ q, limit })}`),
+
   getUserPosts: (id: string) => api.get<Post[]>(`/users/${id}/posts`),
+
+  connectUser: (id: string) =>
+    api.post<{ connected: boolean; alreadyConnected: boolean }>(`/users/${id}/connect`, {}),
 
   getPosts: (filter?: string) => api.get<Post[]>(`/posts${toQuery({ filter })}`),
 
@@ -28,12 +58,18 @@ export const agoraApi = {
 
   upvotePost: (postId: string) => api.post<{ id: string; upvotes: number }>(`/posts/${postId}/upvote`, {}),
 
+  votePost: (postId: string, value: -1 | 0 | 1) =>
+    api.post<{ id: string; upvotes: number; userVote: -1 | 0 | 1 }>(`/posts/${postId}/vote`, { value }),
+
   getComments: (postId: string) => api.get<Comment[]>(`/posts/${postId}/comments`),
 
   createComment: (
     postId: string,
-    payload: { content: string; parentCommentId?: string; authorId?: string }
+    payload: { content: string; parentCommentId?: string }
   ) => api.post<Comment>(`/posts/${postId}/comments`, payload),
+
+  voteComment: (commentId: string, value: -1 | 0 | 1) =>
+    api.post<{ id: string; upvotes: number; userVote: -1 | 0 | 1 }>(`/comments/${commentId}/vote`, { value }),
 
   getCompanies: () => api.get<Company[]>("/companies"),
 
@@ -44,14 +80,14 @@ export const agoraApi = {
   getGraphData: (filters?: { industry?: string; university?: string }) =>
     api.get<GraphData>(`/graph${toQuery(filters ?? {})}`),
 
-  getConversations: (userId?: string) =>
-    api.get<Conversation[]>(`/conversations${toQuery({ userId })}`),
+  getConversations: () => api.get<Conversation[]>("/conversations"),
+
+  createDirectConversation: (targetUserId: string) =>
+    api.post<{ conversationId: string; existing: boolean }>("/conversations/direct", { targetUserId }),
 
   getMessages: (conversationId: string) =>
     api.get<Message[]>(`/conversations/${conversationId}/messages`),
 
-  sendMessage: (
-    conversationId: string,
-    payload: { content: string; senderId?: string }
-  ) => api.post<Message>(`/conversations/${conversationId}/messages`, payload),
+  sendMessage: (conversationId: string, payload: { content: string }) =>
+    api.post<Message>(`/conversations/${conversationId}/messages`, payload),
 };

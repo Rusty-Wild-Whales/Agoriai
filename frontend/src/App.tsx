@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -34,13 +34,27 @@ function DarkModeSync({ children }: { children: React.ReactNode }) {
 }
 
 function AuthInitializer({ children }: { children: React.ReactNode }) {
-  const { setUser, isAuthenticated } = useAuthStore();
+  const { setUser, isAuthenticated, user, logout } = useAuthStore();
+  const [initializing, setInitializing] = useState(() => {
+    const token = localStorage.getItem("auth_token");
+    return Boolean(token && !(isAuthenticated && user));
+  });
 
   useEffect(() => {
-    if (isAuthenticated) return;
+    const token = localStorage.getItem("auth_token");
+
+    if (!token) {
+      if (isAuthenticated) {
+        logout();
+      }
+      return;
+    }
+
+    if (isAuthenticated && user) {
+      return;
+    }
 
     let cancelled = false;
-
     void agoraApi
       .getCurrentUser()
       .then((user) => {
@@ -50,12 +64,24 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
       })
       .catch((error) => {
         console.error("Failed to initialize auth user", error);
+        if (!cancelled) {
+          logout();
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setInitializing(false);
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [setUser, isAuthenticated]);
+  }, [setUser, isAuthenticated, user, logout]);
+
+  if (initializing) {
+    return <RouteFallback />;
+  }
 
   return <>{children}</>;
 }
@@ -72,6 +98,14 @@ function withRouteFallback(node: React.ReactNode) {
   return <Suspense fallback={<RouteFallback />}>{node}</Suspense>;
 }
 
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -82,7 +116,13 @@ export default function App() {
               <Routes>
                 <Route path="/" element={withRouteFallback(<Landing />)} />
                 <Route path="/onboarding" element={withRouteFallback(<Onboarding />)} />
-                <Route element={<AppLayout />}>
+                <Route
+                  element={
+                    <RequireAuth>
+                      <AppLayout />
+                    </RequireAuth>
+                  }
+                >
                   <Route path="/dashboard" element={withRouteFallback(<Dashboard />)} />
                   <Route path="/feed" element={withRouteFallback(<Feed />)} />
                   <Route path="/nexus" element={withRouteFallback(<Nexus />)} />

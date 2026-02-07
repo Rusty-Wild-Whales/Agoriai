@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Send, Eye, AlertCircle, UserCheck, Sparkles } from "lucide-react";
 import { Avatar } from "../components/ui/Avatar";
@@ -25,31 +26,39 @@ function isSystemMessage(msg: ChatMessage): msg is SystemMessage {
 
 export default function Messages() {
   const { user } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const conversationFromQuery = searchParams.get("conversation");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [showRevealModal, setShowRevealModal] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(user?.id));
+  const [sendError, setSendError] = useState<string | null>(null);
   const [revealedIdentities, setRevealedIdentities] = useState<
     Record<string, { name: string; timestamp: string }>
   >({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const currentUserId = user?.id ?? "u1";
-  const currentUserRealName = user?.realName ?? "Alex Chen";
+  const currentUserId = user?.id;
+  const currentUserRealName = user?.realName ?? user?.anonAlias ?? "Anonymous";
 
   useEffect(() => {
+    if (!user?.id) return;
     let cancelled = false;
 
     void agoraApi
-      .getConversations(currentUserId)
+      .getConversations()
       .then((data) => {
         if (cancelled) return;
         setConversations(data);
         if (data.length > 0) {
-          setActiveConvId((prev) => prev ?? data[0].id);
+          if (conversationFromQuery && data.some((conversation) => conversation.id === conversationFromQuery)) {
+            setActiveConvId(conversationFromQuery);
+          } else {
+            setActiveConvId((prev) => prev ?? data[0].id);
+          }
         }
       })
       .catch((error) => {
@@ -65,10 +74,10 @@ export default function Messages() {
     return () => {
       cancelled = true;
     };
-  }, [currentUserId]);
+  }, [user?.id, conversationFromQuery]);
 
   useEffect(() => {
-    if (!activeConvId) return;
+    if (!activeConvId || !currentUserId) return;
 
     let cancelled = false;
 
@@ -131,28 +140,34 @@ export default function Messages() {
   const hasRevealedIdentity = activeConvId ? Boolean(revealedIdentities[activeConvId]) : false;
 
   const handleSend = async () => {
+    if (!currentUserId) return;
     const trimmed = newMessage.trim();
     if (!trimmed || !activeConvId) return;
 
-    const msg = await agoraApi.sendMessage(activeConvId, {
-      content: trimmed,
-      senderId: currentUserId,
-    });
-    setMessages((prev) => [...prev, msg]);
+    setSendError(null);
+    try {
+      const msg = await agoraApi.sendMessage(activeConvId, {
+        content: trimmed,
+      });
+      setMessages((prev) => [...prev, msg]);
 
-    setConversations((prev) =>
-      prev.map((conv) =>
-        conv.id === activeConvId
-          ? {
-              ...conv,
-              lastMessage: msg,
-              updatedAt: msg.createdAt,
-            }
-          : conv
-      )
-    );
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.id === activeConvId
+            ? {
+                ...conv,
+                lastMessage: msg,
+                updatedAt: msg.createdAt,
+              }
+            : conv
+        )
+      );
 
-    setNewMessage("");
+      setNewMessage("");
+    } catch (error) {
+      console.error("Failed to send message", error);
+      setSendError(error instanceof Error ? error.message : "Unable to send message.");
+    }
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -163,7 +178,7 @@ export default function Messages() {
   };
 
   const handleRevealIdentity = () => {
-    if (!activeConvId) return;
+    if (!activeConvId || !currentUserId) return;
 
     const timestamp = new Date().toISOString();
 
@@ -192,6 +207,14 @@ export default function Messages() {
     );
   }
 
+  if (!user?.id) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
+        <p className="text-slate-600 dark:text-slate-300">You need to sign in to view messages.</p>
+      </div>
+    );
+  }
+
   return (
     <div
       data-tutorial="messages-panel"
@@ -211,7 +234,10 @@ export default function Messages() {
             return (
               <button
                 key={conv.id}
-                onClick={() => setActiveConvId(conv.id)}
+                onClick={() => {
+                  setSendError(null);
+                  setActiveConvId(conv.id);
+                }}
                 className={`mb-1 flex w-full cursor-pointer items-center gap-3 rounded-xl p-3 text-left transition-colors ${
                   isActive
                     ? "bg-slate-100 dark:bg-slate-800/70"
@@ -371,6 +397,11 @@ export default function Messages() {
             </div>
 
             <footer className="border-t border-slate-200/80 p-4 dark:border-slate-700/70">
+              {sendError && (
+                <p className="mb-2 rounded-lg border border-rose-300/70 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
+                  {sendError}
+                </p>
+              )}
               <div className="flex gap-3">
                 <input
                   type="text"

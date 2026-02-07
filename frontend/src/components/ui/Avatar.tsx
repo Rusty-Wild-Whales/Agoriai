@@ -325,7 +325,7 @@ export function Avatar({
       <img
         src={imageUrl}
         alt={alt}
-        className={`rounded-full object-cover ${sizeClasses[size]} ${className}`}
+        className={`block rounded-full object-cover object-center ${sizeClasses[size]} ${className}`}
       />
     );
   }

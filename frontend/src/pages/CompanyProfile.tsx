@@ -185,7 +185,7 @@ export default function CompanyProfile() {
           </h3>
           <div className="space-y-4">
             {relatedPosts.map((post) => (
-              <PostCard key={post.id} post={post} onUpvote={() => {}} />
+              <PostCard key={post.id} post={post} />
             ))}
           </div>
         </div>

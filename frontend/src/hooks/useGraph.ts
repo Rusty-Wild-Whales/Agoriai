@@ -10,5 +10,6 @@ export function useGraphData(filters?: {
     queryKey: ["graph", filters],
     queryFn: () => agoraApi.getGraphData(filters),
     staleTime: 1000 * 60 * 10,
+    placeholderData: (previousData) => previousData,
   });
 }

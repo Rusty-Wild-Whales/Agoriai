@@ -20,9 +20,11 @@ export const visibilityDescriptions: Record<VisibilityLevel, string> = {
 };
 
 interface AuthState {
+  token: string | null;
   user: User | null;
   isAuthenticated: boolean;
   visibilityLevel: VisibilityLevel;
+  setAuth: (payload: { user: User; token: string }) => void;
   setUser: (user: User) => void;
   setVisibilityLevel: (level: VisibilityLevel) => void;
   logout: () => void;
@@ -38,18 +40,26 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
+      token: null,
       user: null,
       isAuthenticated: false,
       visibilityLevel: "anonymous",
 
+      setAuth: ({ user, token }) => {
+        localStorage.setItem("auth_token", token);
+        set({ user, token, isAuthenticated: true });
+      },
+
       setUser: (user) =>
-        set({ user, isAuthenticated: true }),
+        set((state) => ({ user, isAuthenticated: true, token: state.token })),
 
       setVisibilityLevel: (level) =>
         set({ visibilityLevel: level }),
 
-      logout: () =>
-        set({ user: null, isAuthenticated: false, visibilityLevel: "anonymous" }),
+      logout: () => {
+        localStorage.removeItem("auth_token");
+        set({ user: null, token: null, isAuthenticated: false, visibilityLevel: "anonymous" });
+      },
 
       getDisplayName: () => {
         const { user, visibilityLevel } = get();
@@ -93,6 +103,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "auth-storage",
       partialize: (state) => ({
+        token: state.token,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
         visibilityLevel: state.visibilityLevel,

@@ -16,6 +16,9 @@ async function request<T>(
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem("auth_token");
+    }
     const error = await response
       .json()
       .catch(() => ({ message: "Request failed" }));

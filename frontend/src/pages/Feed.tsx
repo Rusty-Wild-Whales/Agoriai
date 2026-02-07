@@ -5,7 +5,7 @@ import { FilterBar } from "../components/feed/FilterBar";
 import { PostComposer } from "../components/feed/PostComposer";
 import { PostCard } from "../components/feed/PostCard";
 import { PostCardSkeleton } from "../components/ui/Skeleton";
-import { usePosts, useUpvotePost, useCreatePost } from "../hooks/usePosts";
+import { usePosts, useCreatePost } from "../hooks/usePosts";
 import type { PostCategory } from "../types";
 
 export default function Feed() {
@@ -15,7 +15,6 @@ export default function Feed() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") ?? "");
 
   const { data: posts, isLoading } = usePosts(filter);
-  const upvoteMutation = useUpvotePost();
   const createMutation = useCreatePost();
   const urlSearchQuery = searchParams.get("q") ?? "";
 
@@ -120,7 +119,7 @@ export default function Feed() {
           </div>
         ) : (
           filteredPosts.map((post) => (
-            <PostCard key={post.id} post={post} onUpvote={(id) => upvoteMutation.mutate(id)} />
+            <PostCard key={post.id} post={post} />
           ))
         )}
       </section>

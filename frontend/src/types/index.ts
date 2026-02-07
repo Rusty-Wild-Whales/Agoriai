@@ -44,6 +44,7 @@ export interface Post {
   upvotes: number;
   commentCount: number;
   isAnonymous: boolean;
+  userVote?: -1 | 0 | 1;
   createdAt: string;
   updatedAt: string;
 }
@@ -152,4 +153,9 @@ export interface Message {
   senderAlias: string;
   content: string;
   createdAt: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
 }

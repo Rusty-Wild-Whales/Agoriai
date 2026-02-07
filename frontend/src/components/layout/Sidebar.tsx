@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -11,6 +11,7 @@ import {
   EyeOff,
   GraduationCap,
   Briefcase,
+  Settings,
 } from "lucide-react";
 import { useUIStore } from "../../stores/uiStore";
 import { useAuthStore, visibilityLabels } from "../../stores/authStore";
@@ -33,6 +34,7 @@ const visibilityIcons = {
 export function Sidebar() {
   const { sidebarOpen, setSidebarOpen, setActiveModal } = useUIStore();
   const { user, visibilityLevel, getDisplayName } = useAuthStore();
+  const navigate = useNavigate();
 
   const VisibilityIcon = visibilityIcons[visibilityLevel];
 
@@ -99,7 +101,7 @@ export function Sidebar() {
             className={({ isActive }) =>
               `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${
                 isActive
-                  ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-white"
+                  ? "bg-amber-100 text-slate-900 dark:bg-amber-500/15 dark:text-amber-100"
                   : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-white"
               }`
             }
@@ -133,36 +135,52 @@ export function Sidebar() {
       </nav>
 
       {/* User identity section */}
-      <button
-        onClick={() => setActiveModal("settings")}
-        data-tutorial="user-profile"
-        className="border-t border-slate-200 dark:border-slate-800 p-3 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer text-left w-full"
-      >
-        <div className="flex items-center gap-3">
-          <Avatar
-            seed={user?.anonAvatarSeed || "default"}
-            size="sm"
-          />
-          <AnimatePresence>
-            {sidebarOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex-1 min-w-0"
-              >
-                <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                  {getDisplayName()}
-                </p>
-                <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                  <VisibilityIcon size={12} />
-                  <span>{visibilityLabels[visibilityLevel]}</span>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </button>
+      <div className="border-t border-slate-200 p-3 dark:border-slate-800">
+        <button
+          onClick={() => {
+            if (user?.id) {
+              navigate(`/profile/${user.id}`);
+            }
+          }}
+          data-tutorial="user-profile"
+          className="w-full cursor-pointer rounded-xl p-2 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60"
+        >
+          <div className="flex items-center gap-3">
+            <Avatar
+              seed={user?.anonAvatarSeed || "default"}
+              size="sm"
+            />
+            <AnimatePresence>
+              {sidebarOpen && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex-1 min-w-0"
+                >
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                    {getDisplayName()}
+                  </p>
+                  <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                    <VisibilityIcon size={12} />
+                    <span>{visibilityLabels[visibilityLevel]}</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </button>
+
+        {sidebarOpen && (
+          <button
+            onClick={() => setActiveModal("settings")}
+            className="mt-2 flex w-full cursor-pointer items-center justify-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <Settings size={12} />
+            Settings
+          </button>
+        )}
+      </div>
     </motion.aside>
   );
 }

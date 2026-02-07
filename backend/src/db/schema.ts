@@ -32,6 +32,45 @@ export const usersTable = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const authAccountsTable = pgTable(
+  "auth_accounts",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    schoolEmail: text("school_email").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdx: index("auth_accounts_user_idx").on(table.userId),
+    uniqueUser: unique("auth_accounts_unique_user").on(table.userId),
+    uniqueSchoolEmail: unique("auth_accounts_unique_school_email").on(table.schoolEmail),
+  })
+);
+
+export const authSessionsTable = pgTable(
+  "auth_sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdx: index("auth_sessions_user_idx").on(table.userId),
+    tokenIdx: unique("auth_sessions_unique_token_hash").on(table.tokenHash),
+    expiresIdx: index("auth_sessions_expires_idx").on(table.expiresAt),
+  })
+);
+
 export const companiesTable = pgTable("companies", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -114,6 +153,48 @@ export const commentsTable = pgTable(
   (table) => ({
     postIdx: index("comments_post_id_idx").on(table.postId),
     parentIdx: index("comments_parent_id_idx").on(table.parentCommentId),
+  })
+);
+
+export const postVotesTable = pgTable(
+  "post_votes",
+  {
+    id: serial("id").primaryKey(),
+    postId: text("post_id")
+      .notNull()
+      .references(() => postsTable.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    value: integer("value").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    postIdx: index("post_votes_post_idx").on(table.postId),
+    userIdx: index("post_votes_user_idx").on(table.userId),
+    uniquePostUser: unique("post_votes_unique").on(table.postId, table.userId),
+  })
+);
+
+export const commentVotesTable = pgTable(
+  "comment_votes",
+  {
+    id: serial("id").primaryKey(),
+    commentId: text("comment_id")
+      .notNull()
+      .references(() => commentsTable.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    value: integer("value").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    commentIdx: index("comment_votes_comment_idx").on(table.commentId),
+    userIdx: index("comment_votes_user_idx").on(table.userId),
+    uniqueCommentUser: unique("comment_votes_unique").on(table.commentId, table.userId),
   })
 );
 

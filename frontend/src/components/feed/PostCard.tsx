@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ThumbsUp,
@@ -7,12 +8,14 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Avatar } from "../ui/Avatar";
 import { Badge } from "../ui/Badge";
 import type { Post, Comment } from "../../types";
 import { formatDate, categoryLabel } from "../../utils/helpers";
 import { CommentThread } from "./CommentThread";
 import { agoraApi } from "../../services/agoraApi";
+import { Markdown } from "../ui/Markdown";
 
 const categoryVariants: Record<string, "default" | "accent" | "success" | "warning"> = {
   "interview-experience": "accent",
@@ -24,28 +27,37 @@ const categoryVariants: Record<string, "default" | "accent" | "success" | "warni
 
 interface PostCardProps {
   post: Post;
-  onUpvote: (id: string) => void;
 }
 
-export function PostCard({ post, onUpvote }: PostCardProps) {
+export function PostCard({ post }: PostCardProps) {
+  const queryClient = useQueryClient();
   const [showFullContent, setShowFullContent] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [upvoted, setUpvoted] = useState(false);
-  const [downvoted, setDownvoted] = useState(false);
+  const [vote, setVote] = useState<-1 | 0 | 1>(post.userVote ?? 0);
   const [voteCount, setVoteCount] = useState(post.upvotes);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setVote(post.userVote ?? 0);
+    setVoteCount(post.upvotes);
+  }, [post.id, post.upvotes, post.userVote]);
 
   const loadComments = async () => {
     if (comments.length > 0) return;
 
     setLoadingComments(true);
+    setCommentsError(null);
     try {
       const data = await agoraApi.getComments(post.id);
       setComments(data);
       const total = data.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
       setCommentCount(total);
+    } catch (error) {
+      console.error("Failed to load comments", error);
+      setCommentsError(error instanceof Error ? error.message : "Failed to load comments.");
     } finally {
       setLoadingComments(false);
     }
@@ -59,36 +71,24 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
     }
   };
 
-  const handleUpvote = () => {
-    if (upvoted) {
-      setUpvoted(false);
-      setVoteCount((value) => value - 1);
-      return;
-    }
+  const handleVote = async (nextVote: -1 | 1) => {
+    const previousVote = vote;
+    const resolvedVote: -1 | 0 | 1 = vote === nextVote ? 0 : nextVote;
+    const delta = resolvedVote - previousVote;
 
-    setUpvoted(true);
-    if (downvoted) {
-      setDownvoted(false);
-      setVoteCount((value) => value + 2);
-    } else {
-      setVoteCount((value) => value + 1);
-    }
-    onUpvote(post.id);
-  };
+    setVote(resolvedVote);
+    setVoteCount((value) => value + delta);
 
-  const handleDownvote = () => {
-    if (downvoted) {
-      setDownvoted(false);
-      setVoteCount((value) => value + 1);
-      return;
-    }
-
-    setDownvoted(true);
-    if (upvoted) {
-      setUpvoted(false);
-      setVoteCount((value) => value - 2);
-    } else {
-      setVoteCount((value) => value - 1);
+    try {
+      const response = await agoraApi.votePost(post.id, resolvedVote);
+      setVote(response.userVote);
+      setVoteCount(response.upvotes);
+      void queryClient.invalidateQueries({ queryKey: ["posts"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    } catch (error) {
+      console.error("Failed to update vote", error);
+      setVote(previousVote);
+      setVoteCount((value) => value - delta);
     }
   };
 
@@ -103,7 +103,12 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
         <header className="mb-3 flex items-center gap-3">
           <Avatar seed={post.authorAvatarSeed} size="sm" />
           <div>
-            <p className="text-sm font-medium text-slate-900 dark:text-white">{post.authorAlias}</p>
+            <Link
+              to={`/profile/${post.authorId}`}
+              className="text-sm font-medium text-slate-900 underline-offset-2 hover:underline dark:text-white"
+            >
+              {post.authorAlias}
+            </Link>
             <p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(post.createdAt)}</p>
           </div>
           <Badge variant={categoryVariants[post.category] || "default"} className="ml-auto">
@@ -113,9 +118,10 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
 
         <h3 className="mb-2 font-display text-xl font-semibold text-slate-900 dark:text-white">{post.title}</h3>
 
-        <div className="whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-          {contentPreview}
-        </div>
+        <Markdown
+          content={contentPreview}
+          className="text-sm leading-relaxed text-slate-700 dark:text-slate-300"
+        />
 
         {post.content.length > 200 && (
           <button
@@ -147,14 +153,16 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
           <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800">
             <motion.button
               whileTap={{ scale: 1.12 }}
-              onClick={handleUpvote}
+              onClick={() => {
+                void handleVote(1);
+              }}
               className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 transition-colors ${
-                upvoted
+                vote === 1
                   ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"
                   : "text-slate-500 hover:bg-slate-200 hover:text-amber-600 dark:text-slate-300 dark:hover:bg-slate-700"
               }`}
             >
-              <ThumbsUp size={16} fill={upvoted ? "currentColor" : "none"} />
+              <ThumbsUp size={16} fill={vote === 1 ? "currentColor" : "none"} />
             </motion.button>
 
             <span
@@ -171,14 +179,16 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
 
             <motion.button
               whileTap={{ scale: 1.12 }}
-              onClick={handleDownvote}
+              onClick={() => {
+                void handleVote(-1);
+              }}
               className={`flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 transition-colors ${
-                downvoted
+                vote === -1
                   ? "bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400"
                   : "text-slate-500 hover:bg-slate-200 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-slate-700"
               }`}
             >
-              <ThumbsDown size={16} fill={downvoted ? "currentColor" : "none"} />
+              <ThumbsDown size={16} fill={vote === -1 ? "currentColor" : "none"} />
             </motion.button>
           </div>
 
@@ -206,6 +216,7 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
             <CommentThread
               postId={post.id}
               comments={comments}
+              error={commentsError}
               loading={loadingComments}
               onCommentAdded={() => setCommentCount((value) => value + 1)}
             />

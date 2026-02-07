@@ -1,6 +1,8 @@
 import { count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import {
+  authAccountsTable,
+  commentVotesTable,
   commentsTable,
   companiesTable,
   connectionsTable,
@@ -8,9 +10,53 @@ import {
   conversationsTable,
   internshipsTable,
   messagesTable,
+  postVotesTable,
   postsTable,
   usersTable,
 } from "./schema";
+
+const demoSeedPassword = process.env.SEED_USER_PASSWORD ?? "DemoPass!2026";
+
+function toSchoolDomain(university: string) {
+  const overrides: Record<string, string> = {
+    MIT: "mit.edu",
+    Stanford: "stanford.edu",
+    "UC Berkeley": "berkeley.edu",
+    "Georgia Tech": "gatech.edu",
+    Harvard: "harvard.edu",
+    "Carnegie Mellon": "cmu.edu",
+    UPenn: "upenn.edu",
+    UCLA: "ucla.edu",
+  };
+
+  if (overrides[university]) {
+    return overrides[university];
+  }
+
+  const normalized = university
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized ? `${normalized}.edu` : "school.edu";
+}
+
+function aliasEmail(alias: string, university: string, idx: number) {
+  const localPart = alias.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return `${localPart || `student${idx + 1}`}@${toSchoolDomain(university)}`;
+}
+
+async function buildAuthAccounts(users: Array<typeof usersTable.$inferInsert>) {
+  const passwordHash = await Bun.password.hash(demoSeedPassword);
+  return users.map((user, idx) => ({
+    userId: user.id,
+    schoolEmail: aliasEmail(user.anonAlias, user.university, idx),
+    passwordHash,
+    createdAt: user.createdAt ?? new Date(),
+    updatedAt: user.createdAt ?? new Date(),
+  })) satisfies Array<typeof authAccountsTable.$inferInsert>;
+}
 
 const users: Array<typeof usersTable.$inferInsert> = [
   {
@@ -457,6 +503,50 @@ const posts: Array<typeof postsTable.$inferInsert> = [
     createdAt: new Date("2025-11-15T15:30:00Z"),
     updatedAt: new Date("2025-11-15T15:30:00Z"),
   },
+  {
+    id: "p13",
+    authorId: "u5",
+    category: "resource",
+    title: "Consulting Case Prep: 30-Day Sprint Plan",
+    content:
+      "## Weekly plan\n- Week 1: Market sizing drills\n- Week 2: Profitability trees\n- Week 3: Ops + growth cases\n- Week 4: Live mocks and feedback loops",
+    companyId: "c3",
+    tags: ["consulting", "case-prep", "resource"],
+    upvotes: 54,
+    commentCount: 2,
+    isAnonymous: false,
+    createdAt: new Date("2025-11-18T18:00:00Z"),
+    updatedAt: new Date("2025-11-18T18:00:00Z"),
+  },
+  {
+    id: "p14",
+    authorId: "u6",
+    category: "interview-experience",
+    title: "Stripe SWE Intern Final Round: What Actually Showed Up",
+    content:
+      "Interview was practical and collaboration-heavy. They care about communication, not just perfect code.",
+    companyId: "c8",
+    tags: ["stripe", "swe", "final-round"],
+    upvotes: 36,
+    commentCount: 1,
+    isAnonymous: true,
+    createdAt: new Date("2025-12-03T11:20:00Z"),
+    updatedAt: new Date("2025-12-03T11:20:00Z"),
+  },
+  {
+    id: "p15",
+    authorId: "u8",
+    category: "question",
+    title: "Should I optimize for brand name or manager quality?",
+    content:
+      "Torn between a bigger brand with less mentorship and a smaller team with an excellent manager.",
+    tags: ["career-choice", "mentorship", "brand"],
+    upvotes: 21,
+    commentCount: 1,
+    isAnonymous: true,
+    createdAt: new Date("2025-11-19T10:10:00Z"),
+    updatedAt: new Date("2025-11-19T10:10:00Z"),
+  },
 ];
 
 const comments: Array<typeof commentsTable.$inferInsert> = [
@@ -552,6 +642,42 @@ const comments: Array<typeof commentsTable.$inferInsert> = [
     isAnonymous: true,
     createdAt: new Date("2025-08-30T15:10:00Z"),
   },
+  {
+    id: "cm9",
+    postId: "p13",
+    authorId: "u2",
+    content: "This schedule is realistic. Week 4 mocks were key for me.",
+    upvotes: 5,
+    isAnonymous: true,
+    createdAt: new Date("2025-11-18T19:30:00Z"),
+  },
+  {
+    id: "cm10",
+    postId: "p13",
+    authorId: "u5",
+    content: "Agree. I tracked my weak structures and repeated them daily.",
+    upvotes: 4,
+    isAnonymous: false,
+    createdAt: new Date("2025-11-18T20:00:00Z"),
+  },
+  {
+    id: "cm11",
+    postId: "p14",
+    authorId: "u1",
+    content: "Thanks for sharing. Was there any system design component?",
+    upvotes: 3,
+    isAnonymous: true,
+    createdAt: new Date("2025-12-03T12:00:00Z"),
+  },
+  {
+    id: "cm12",
+    postId: "p15",
+    authorId: "u3",
+    content: "Manager quality compounds faster early in your career.",
+    upvotes: 6,
+    isAnonymous: true,
+    createdAt: new Date("2025-11-19T11:00:00Z"),
+  },
 ];
 
 const connections: Array<typeof connectionsTable.$inferInsert> = [
@@ -571,6 +697,11 @@ const connections: Array<typeof connectionsTable.$inferInsert> = [
   { sourceId: "u3", sourceType: "user", targetId: "u6", targetType: "user", weight: 2 },
   { sourceId: "u5", sourceType: "user", targetId: "u7", targetType: "user", weight: 2 },
   { sourceId: "u6", sourceType: "user", targetId: "u8", targetType: "user", weight: 2 },
+  { sourceId: "u4", sourceType: "user", targetId: "u6", targetType: "user", weight: 2 },
+  { sourceId: "u7", sourceType: "user", targetId: "u2", targetType: "user", weight: 3 },
+  { sourceId: "u8", sourceType: "user", targetId: "c4", targetType: "company", weight: 2 },
+  { sourceId: "u5", sourceType: "user", targetId: "c3", targetType: "company", weight: 4 },
+  { sourceId: "u3", sourceType: "user", targetId: "c6", targetType: "company", weight: 2 },
 ];
 
 const conversations: Array<typeof conversationsTable.$inferInsert> = [
@@ -589,6 +720,16 @@ const conversations: Array<typeof conversationsTable.$inferInsert> = [
     updatedAt: new Date("2025-11-30T14:00:00Z"),
     createdAt: new Date("2025-11-30T12:00:00Z"),
   },
+  {
+    id: "conv4",
+    updatedAt: new Date("2025-12-04T08:20:00Z"),
+    createdAt: new Date("2025-12-04T07:40:00Z"),
+  },
+  {
+    id: "conv5",
+    updatedAt: new Date("2025-12-03T19:10:00Z"),
+    createdAt: new Date("2025-12-03T18:30:00Z"),
+  },
 ];
 
 const conversationParticipants: Array<
@@ -600,6 +741,10 @@ const conversationParticipants: Array<
   { conversationId: "conv2", userId: "u6", isAnonymous: true, isIdentityRevealed: false },
   { conversationId: "conv3", userId: "u1", isAnonymous: true, isIdentityRevealed: false },
   { conversationId: "conv3", userId: "u2", isAnonymous: true, isIdentityRevealed: false },
+  { conversationId: "conv4", userId: "u1", isAnonymous: true, isIdentityRevealed: false },
+  { conversationId: "conv4", userId: "u5", isAnonymous: false, isIdentityRevealed: true },
+  { conversationId: "conv5", userId: "u3", isAnonymous: true, isIdentityRevealed: false },
+  { conversationId: "conv5", userId: "u8", isAnonymous: true, isIdentityRevealed: false },
 ];
 
 const messages: Array<typeof messagesTable.$inferInsert> = [
@@ -659,24 +804,89 @@ const messages: Array<typeof messagesTable.$inferInsert> = [
     content: "Yes, definitely. Send me the repo details.",
     createdAt: new Date("2025-11-30T14:00:00Z"),
   },
+  {
+    id: "m9",
+    conversationId: "conv4",
+    senderId: "u5",
+    content: "Happy to share my consulting prep docs if helpful.",
+    createdAt: new Date("2025-12-04T07:40:00Z"),
+  },
+  {
+    id: "m10",
+    conversationId: "conv4",
+    senderId: "u1",
+    content: "That would be amazing. Thank you.",
+    createdAt: new Date("2025-12-04T08:20:00Z"),
+  },
+  {
+    id: "m11",
+    conversationId: "conv5",
+    senderId: "u3",
+    content: "Loved your portfolio thread. Mind if I ask one follow-up?",
+    createdAt: new Date("2025-12-03T18:30:00Z"),
+  },
+  {
+    id: "m12",
+    conversationId: "conv5",
+    senderId: "u8",
+    content: "Of course. Ask anything.",
+    createdAt: new Date("2025-12-03T19:10:00Z"),
+  },
+];
+
+const postVotes: Array<typeof postVotesTable.$inferInsert> = [
+  { postId: "p1", userId: "u2", value: 1 },
+  { postId: "p1", userId: "u3", value: 1 },
+  { postId: "p2", userId: "u1", value: 1 },
+  { postId: "p5", userId: "u6", value: 1 },
+  { postId: "p5", userId: "u1", value: 1 },
+  { postId: "p8", userId: "u3", value: -1 },
+  { postId: "p13", userId: "u2", value: 1 },
+  { postId: "p14", userId: "u1", value: 1 },
+];
+
+const commentVotes: Array<typeof commentVotesTable.$inferInsert> = [
+  { commentId: "cm1", userId: "u1", value: 1 },
+  { commentId: "cm3", userId: "u2", value: 1 },
+  { commentId: "cm4", userId: "u3", value: 1 },
+  { commentId: "cm10", userId: "u1", value: 1 },
+  { commentId: "cm11", userId: "u6", value: 1 },
 ];
 
 export async function seedDatabase(db: ReturnType<typeof drizzle>) {
   const [existingUsers] = await db.select({ count: count() }).from(usersTable);
 
-  if ((existingUsers?.count ?? 0) > 0) {
+  const existingCount = Number(existingUsers?.count ?? 0);
+
+  if (existingCount === 0) {
+    const authAccounts = await buildAuthAccounts(users);
+
+    await db.transaction(async (tx) => {
+      await tx.insert(usersTable).values(users);
+      await tx.insert(authAccountsTable).values(authAccounts);
+      await tx.insert(companiesTable).values(companies);
+      await tx.insert(internshipsTable).values(internships);
+      await tx.insert(postsTable).values(posts);
+      await tx.insert(commentsTable).values(comments);
+      await tx.insert(postVotesTable).values(postVotes);
+      await tx.insert(commentVotesTable).values(commentVotes);
+      await tx.insert(connectionsTable).values(connections);
+      await tx.insert(conversationsTable).values(conversations);
+      await tx.insert(conversationParticipantsTable).values(conversationParticipants);
+      await tx.insert(messagesTable).values(messages);
+    });
+
     return;
   }
 
-  await db.transaction(async (tx) => {
-    await tx.insert(usersTable).values(users);
-    await tx.insert(companiesTable).values(companies);
-    await tx.insert(internshipsTable).values(internships);
-    await tx.insert(postsTable).values(posts);
-    await tx.insert(commentsTable).values(comments);
-    await tx.insert(connectionsTable).values(connections);
-    await tx.insert(conversationsTable).values(conversations);
-    await tx.insert(conversationParticipantsTable).values(conversationParticipants);
-    await tx.insert(messagesTable).values(messages);
-  });
+  const [existingAuthAccounts] = await db.select({ count: count() }).from(authAccountsTable);
+  const authAccountCount = Number(existingAuthAccounts?.count ?? 0);
+
+  if (authAccountCount === 0) {
+    const existingUserRows = await db.select().from(usersTable);
+    const missingAccounts = await buildAuthAccounts(existingUserRows);
+    if (missingAccounts.length > 0) {
+      await db.insert(authAccountsTable).values(missingAccounts);
+    }
+  }
 }

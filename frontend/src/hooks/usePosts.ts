@@ -6,6 +6,7 @@ export function usePosts(filter: string = "all") {
   return useQuery<Post[]>({
     queryKey: ["posts", filter],
     queryFn: () => agoraApi.getPosts(filter),
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -21,11 +22,12 @@ export function useCreatePost() {
   });
 }
 
-export function useUpvotePost() {
+export function useVotePost() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (postId: string) => agoraApi.upvotePost(postId),
+    mutationFn: ({ postId, value }: { postId: string; value: -1 | 0 | 1 }) =>
+      agoraApi.votePost(postId, value),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });

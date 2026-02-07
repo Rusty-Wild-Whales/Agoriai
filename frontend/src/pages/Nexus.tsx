@@ -139,22 +139,37 @@ export default function Nexus() {
 
     const width = dimensions.width;
     const height = dimensions.height;
+    const nodeCount = Math.max(graphData.nodes.length, 1);
+    const boundWidth = Math.min(Math.max(220, width - 72), Math.max(420, Math.sqrt(nodeCount) * 220));
+    const boundHeight = Math.min(Math.max(200, height - 96), Math.max(320, Math.sqrt(nodeCount) * 180));
+    const bounds = {
+      minX: width / 2 - boundWidth / 2,
+      maxX: width / 2 + boundWidth / 2,
+      minY: height / 2 - boundHeight / 2,
+      maxY: height / 2 + boundHeight / 2,
+    };
 
     const goldenAngle = Math.PI * (3 - Math.sqrt(5));
     const nodes: SimNode[] = graphData.nodes.map((node, index) => {
       const ring = Math.sqrt(index + 1);
       const radius = calculateNodeRadius(node);
-      const radialDistance = 42 * ring + radius * 1.5;
+      const radialDistance = Math.min(
+        Math.max(boundWidth, boundHeight) * 0.42,
+        64 * ring + radius * 2.2
+      );
       const angle = index * goldenAngle;
 
       const hash = [...node.id].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
       const jitterX = ((hash % 7) - 3) * 3;
       const jitterY = ((hash % 11) - 5) * 2;
 
+      const seededX = width / 2 + Math.cos(angle) * radialDistance + jitterX;
+      const seededY = height / 2 + Math.sin(angle) * radialDistance + jitterY;
+
       return {
         ...node,
-        x: width / 2 + Math.cos(angle) * radialDistance + jitterX,
-        y: height / 2 + Math.sin(angle) * radialDistance + jitterY,
+        x: Math.min(bounds.maxX - radius, Math.max(bounds.minX + radius, seededX)),
+        y: Math.min(bounds.maxY - radius, Math.max(bounds.minY + radius, seededY)),
       };
     });
 
@@ -191,11 +206,20 @@ export default function Nexus() {
         d3
           .forceLink(edges)
           .id((d: unknown) => (d as SimNode).id)
-          .distance((d: unknown) => 160 / Math.max((d as SimEdge).weight || 1, 0.45))
+          .distance((d: unknown) => {
+            const weight = Math.max((d as SimEdge).weight || 1, 0.45);
+            const baseDistance = Math.max(90, Math.min(200, 170 - nodeCount * 1.8));
+            return baseDistance / weight;
+          })
       )
-      .force("charge", d3.forceManyBody().strength((d: unknown) => -(calculateNodeRadius(d as GraphNode) * 10 + 72)))
+      .force(
+        "charge",
+        d3.forceManyBody().strength((d: unknown) => -(calculateNodeRadius(d as GraphNode) * 12 + 110))
+      )
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide((d: unknown) => calculateNodeRadius(d as GraphNode) + 20));
+      .force("x", d3.forceX(width / 2).strength(0.05))
+      .force("y", d3.forceY(height / 2).strength(0.05))
+      .force("collide", d3.forceCollide((d: unknown) => calculateNodeRadius(d as GraphNode) + 26));
 
     // Pre-settle the initial layout so nodes do not spawn stacked at the same coordinates.
     simulation.stop();
@@ -300,6 +324,12 @@ export default function Nexus() {
     let hasAutoFit = false;
 
     simulation.on("tick", () => {
+      nodes.forEach((node) => {
+        const radius = calculateNodeRadius(node);
+        node.x = Math.min(bounds.maxX - radius, Math.max(bounds.minX + radius, node.x));
+        node.y = Math.min(bounds.maxY - radius, Math.max(bounds.minY + radius, node.y));
+      });
+
       link
         .attr("x1", (d) => d.source.x)
         .attr("y1", (d) => d.source.y)

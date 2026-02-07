@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import {
   FileText,
@@ -19,6 +19,8 @@ import { Skeleton } from "../components/ui/Skeleton";
 import { agoraApi } from "../services/agoraApi";
 import { formatDate, categoryLabel } from "../utils/helpers";
 import type { Post, User } from "../types";
+import { Button } from "../components/ui/Button";
+import { useAuthStore } from "../stores/authStore";
 
 function StatCallout({
   value,
@@ -73,13 +75,26 @@ function StatCallout({
 
 export default function UserProfile() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const currentUser = useAuthStore((state) => state.user);
   const [user, setUser] = useState<User | null>(null);
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const userId = id || "u1";
     let cancelled = false;
+    const userId = id ?? currentUser?.id;
+
+    if (!userId) {
+      setUser(null);
+      setUserPosts([]);
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     void Promise.all([agoraApi.getUser(userId), agoraApi.getUserPosts(userId)])
       .then(([userData, posts]) => {
@@ -102,7 +117,38 @@ export default function UserProfile() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, currentUser?.id]);
+
+  const isOwnProfile = Boolean(user && currentUser && user.id === currentUser.id);
+
+  const handleConnect = async () => {
+    if (!user || !currentUser || isOwnProfile) return;
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const result = await agoraApi.connectUser(user.id);
+      setActionMessage(result.alreadyConnected ? "Already connected." : "Connection created.");
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "Failed to connect.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleMessage = async () => {
+    if (!user || !currentUser || isOwnProfile) return;
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const result = await agoraApi.createDirectConversation(user.id);
+      navigate(`/messages?conversation=${encodeURIComponent(result.conversationId)}`);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : "Failed to open conversation.");
+      setActionLoading(false);
+      return;
+    }
+    setActionLoading(false);
+  };
 
   if (loading) {
     return (
@@ -156,6 +202,19 @@ export default function UserProfile() {
               </Badge>
             ))}
           </div>
+
+          {!isOwnProfile && (
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <Button onClick={handleConnect} disabled={actionLoading}>
+                Connect
+              </Button>
+              <Button variant="secondary" onClick={handleMessage} disabled={actionLoading}>
+                Message
+              </Button>
+            </div>
+          )}
+
+          {actionMessage && <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{actionMessage}</p>}
         </div>
       </Card>
 
