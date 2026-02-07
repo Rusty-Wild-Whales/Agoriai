@@ -52,6 +52,7 @@ export function PostCard({ post, highlighted = false }: PostCardProps) {
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const isOwnPost = currentUser?.id === post.authorId;
+  const authorMeta = [post.authorRealName, post.authorRole, post.authorSchool].filter(Boolean).join(" • ");
 
   useEffect(() => {
     setVote(post.userVote ?? 0);
@@ -181,9 +182,9 @@ export function PostCard({ post, highlighted = false }: PostCardProps) {
             >
               {post.authorAlias}
             </Link>
-            {(post.authorRole || post.authorSchool) && (
+            {authorMeta && (
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {[post.authorRole, post.authorSchool].filter(Boolean).join(" • ")}
+                {authorMeta}
               </p>
             )}
             <p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(post.createdAt)}</p>

@@ -45,6 +45,9 @@ function CommentItem({
   }, [comment.id, comment.content, comment.upvotes, comment.userVote]);
 
   const isOwnComment = currentUserId === comment.authorId;
+  const authorMeta = [comment.authorRealName, comment.authorRole, comment.authorSchool]
+    .filter(Boolean)
+    .join(" • ");
 
   const handleUpvote = async () => {
     const nextVote: -1 | 0 | 1 = vote === 1 ? 0 : 1;
@@ -88,9 +91,9 @@ function CommentItem({
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-slate-900 dark:text-white">{comment.authorAlias}</span>
             <span className="text-xs text-slate-400">{formatDate(comment.createdAt)}</span>
-            {(comment.authorRole || comment.authorSchool) && (
+            {authorMeta && (
               <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                {[comment.authorRole, comment.authorSchool].filter(Boolean).join(" • ")}
+                {authorMeta}
               </span>
             )}
           </div>

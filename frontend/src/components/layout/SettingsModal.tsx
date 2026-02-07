@@ -13,12 +13,13 @@ import {
   Trash2,
   AlertTriangle,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useUIStore } from "../../stores/uiStore";
 import { useAuthStore, visibilityDescriptions, visibilityLabels, type VisibilityLevel } from "../../stores/authStore";
 import { Modal } from "../ui/Modal";
 import { agoraApi } from "../../services/agoraApi";
+import { GlassShatterOverlay } from "../ui/GlassShatterOverlay";
 
 const visibilityLevels: { level: VisibilityLevel; icon: typeof Eye }[] = [
   { level: "anonymous", icon: EyeOff },
@@ -143,7 +144,7 @@ export function SettingsModal() {
     setDraftVisibility("realName");
     setShowRealNameConfirm(false);
     setPlayShatter(true);
-    window.setTimeout(() => setPlayShatter(false), 680);
+    window.setTimeout(() => setPlayShatter(false), 2600);
   };
 
   return (
@@ -151,28 +152,16 @@ export function SettingsModal() {
       isOpen={activeModal === "settings"}
       onClose={closeWithDiscard}
       title="Settings"
+      size="xl"
     >
-      <div className="space-y-6">
-        <div>
-          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+      <div className="relative flex min-h-0 flex-col">
+        <GlassShatterOverlay active={playShatter} variant="settings" />
+        <div className="space-y-5">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Choose what is visible now. Changes apply only after confirmation.
           </p>
 
-          <div className="relative space-y-2">
-            <AnimatePresence>
-              {playShatter && (
-                <motion.div
-                  initial={{ opacity: 0.8 }}
-                  animate={{ opacity: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.65 }}
-                  className="pointer-events-none absolute inset-0 z-10"
-                >
-                  <div className="h-full w-full bg-[linear-gradient(120deg,rgba(255,255,255,0.34),transparent_45%,rgba(255,255,255,0.28))]" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {visibilityLevels.map(({ level, icon: Icon }) => {
               const isSelected = draftVisibility === level;
               return (
@@ -220,15 +209,15 @@ export function SettingsModal() {
         </div>
 
         {showRealNameConfirm && (
-          <div className="rounded-xl border border-amber-300/60 bg-amber-50 p-4 dark:border-amber-500/40 dark:bg-amber-500/10">
-            <div className="mb-2 flex items-center gap-2 text-amber-700 dark:text-amber-300">
+          <div className="my-2 rounded-xl border border-amber-300/60 bg-amber-50 px-5 py-5 dark:border-amber-500/40 dark:bg-amber-500/10">
+            <div className="mb-3 flex items-center gap-2 text-amber-700 dark:text-amber-300">
               <AlertTriangle size={16} />
               <p className="font-medium">Confirm real-name visibility</p>
             </div>
-            <p className="text-sm text-amber-700/90 dark:text-amber-200/90">
-              This reveals your real name immediately across your profile, posts, and comments. You can switch back later.
+            <p className="text-sm leading-relaxed text-amber-700/90 dark:text-amber-200/90">
+              Your alias remains primary, and your real name will be added across your profile, posts, and comments. You can switch back later.
             </p>
-            <div className="mt-3 flex justify-end gap-2">
+            <div className="mt-5 flex items-center justify-end gap-3 border-t border-amber-300/50 pt-4 dark:border-amber-500/30">
               <button
                 onClick={() => setShowRealNameConfirm(false)}
                 className="cursor-pointer rounded-lg px-3 py-1.5 text-sm text-amber-700 transition-colors hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-500/10"
@@ -245,7 +234,7 @@ export function SettingsModal() {
           </div>
         )}
 
-        <div className="space-y-2 border-t border-slate-200 pt-4 dark:border-slate-700">
+        <div className="grid grid-cols-1 gap-3 border-t border-slate-200 pt-5 dark:border-slate-700 md:grid-cols-2">
           <div className="mosaic-surface flex items-center justify-between rounded-xl p-4">
             <div className="flex items-center gap-3">
               {draftDarkMode ? <Moon size={20} className="text-amber-500" /> : <Sun size={20} className="text-amber-500" />}
@@ -323,7 +312,7 @@ export function SettingsModal() {
             </button>
           </div>
 
-          <div className="rounded-xl border border-rose-200/60 bg-rose-50/60 p-4 dark:border-rose-500/30 dark:bg-rose-500/10">
+          <div className="rounded-xl border border-rose-200/60 bg-rose-50/60 p-4 md:col-span-2 dark:border-rose-500/30 dark:bg-rose-500/10">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <Trash2 size={20} className="text-rose-500" />
@@ -371,7 +360,7 @@ export function SettingsModal() {
           </p>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-700">
+        <div className="sticky bottom-0 z-20 -mx-6 mt-4 flex justify-end gap-2 border-t border-slate-200 bg-[var(--surface-2)] px-6 py-4 dark:border-slate-700">
           <button
             onClick={closeWithDiscard}
             disabled={isSubmitting}
@@ -386,7 +375,7 @@ export function SettingsModal() {
             disabled={isSubmitting}
             className="cursor-pointer rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-900 transition-colors hover:bg-amber-400 disabled:opacity-60"
           >
-            {isSubmitting ? "Applying..." : "Apply Settings"}
+            {isSubmitting ? "Applying..." : "Apply Changes"}
           </button>
         </div>
       </div>

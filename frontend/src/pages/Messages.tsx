@@ -1,14 +1,16 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { AlertCircle, Eye, Send, Sparkles, UserCheck } from "lucide-react";
 import { Avatar } from "../components/ui/Avatar";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
+import { GlassShatterOverlay } from "../components/ui/GlassShatterOverlay";
 import { agoraApi } from "../services/agoraApi";
 import { formatDate } from "../utils/helpers";
 import type { Conversation, Message } from "../types";
 import { useAuthStore } from "../stores/authStore";
+import { queryClient } from "../lib/queryClient";
 
 export default function Messages() {
   const { user } = useAuthStore();
@@ -177,7 +179,9 @@ export default function Messages() {
       );
       if (accept) {
         setPlayShatter(true);
-        window.setTimeout(() => setPlayShatter(false), 900);
+        window.setTimeout(() => setPlayShatter(false), 3000);
+        void queryClient.invalidateQueries({ queryKey: ["posts"] });
+        void queryClient.invalidateQueries({ queryKey: ["current-user"] });
       }
       const latestMessages = await agoraApi.getMessages(activeConvId);
       setMessages(latestMessages);
@@ -254,17 +258,7 @@ export default function Messages() {
       </aside>
 
       <section data-tutorial="messages-chat" className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-        <AnimatePresence>
-          {playShatter && (
-            <motion.div
-              initial={{ opacity: 0.9 }}
-              animate={{ opacity: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.9 }}
-              className="pointer-events-none absolute inset-0 z-30 bg-[linear-gradient(120deg,rgba(255,255,255,0.38),transparent_45%,rgba(255,255,255,0.3))]"
-            />
-          )}
-        </AnimatePresence>
+        <GlassShatterOverlay active={playShatter} variant="chat" />
 
         {activeConv ? (
           <>

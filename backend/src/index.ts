@@ -73,6 +73,7 @@ type PostResponse = {
   id: string;
   authorId: string;
   authorAlias: string;
+  authorRealName?: string;
   authorAvatarSeed: string;
   authorVisibilityLevel: VisibilityLevel;
   authorRole?: string;
@@ -97,6 +98,7 @@ type UserResponse = {
   anonAlias: string;
   anonAvatarSeed: string;
   realName?: string;
+  isConnected?: boolean;
   university: string;
   graduationYear: number;
   visibilityLevel: VisibilityLevel;
@@ -111,6 +113,7 @@ type CommentResponse = {
   postId: string;
   authorId: string;
   authorAlias: string;
+  authorRealName?: string;
   authorVisibilityLevel: VisibilityLevel;
   authorRole?: string;
   authorSchool?: string;
@@ -183,7 +186,9 @@ function getUserVisibilityPresentation(user: {
 
   if (visibilityLevel === "realName") {
     return {
-      displayName: user.realName?.trim() || user.anonAlias,
+      // Alias always stays primary; real name can be shown as additional context.
+      displayName: user.anonAlias,
+      realName: user.realName?.trim() || undefined,
       visibilityLevel,
       role,
       school: user.university,
@@ -195,6 +200,7 @@ function getUserVisibilityPresentation(user: {
   if (visibilityLevel === "school") {
     return {
       displayName: user.anonAlias,
+      realName: undefined,
       visibilityLevel,
       role,
       school: user.university,
@@ -206,6 +212,7 @@ function getUserVisibilityPresentation(user: {
   if (visibilityLevel === "role") {
     return {
       displayName: user.anonAlias,
+      realName: undefined,
       visibilityLevel,
       role,
       school: undefined,
@@ -216,6 +223,7 @@ function getUserVisibilityPresentation(user: {
 
   return {
     displayName: user.anonAlias,
+    realName: undefined,
     visibilityLevel,
     role: undefined,
     school: undefined,
@@ -227,6 +235,10 @@ function getUserVisibilityPresentation(user: {
 function toIso(value: Date | string | null | undefined): string {
   if (!value) return new Date().toISOString();
   return (typeof value === "string" ? new Date(value) : value).toISOString();
+}
+
+function normalizeCompanyLookupKey(value: string) {
+  return decodeURIComponent(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 async function computeUserStats(userId: string): Promise<UserStats> {
@@ -280,17 +292,50 @@ async function computeUserStats(userId: string): Promise<UserStats> {
   };
 }
 
-async function serializeUser(user: UserRow, viewerUserId?: string): Promise<UserResponse> {
+async function areUsersConnected(viewerUserId: string, targetUserId: string): Promise<boolean> {
+  if (viewerUserId === targetUserId) return false;
+
+  const [existingConnection] = await db
+    .select({ id: connectionsTable.id })
+    .from(connectionsTable)
+    .where(
+      and(
+        eq(connectionsTable.sourceType, "user"),
+        eq(connectionsTable.targetType, "user"),
+        or(
+          and(eq(connectionsTable.sourceId, viewerUserId), eq(connectionsTable.targetId, targetUserId)),
+          and(eq(connectionsTable.sourceId, targetUserId), eq(connectionsTable.targetId, viewerUserId))
+        )
+      )
+    )
+    .limit(1);
+
+  return Boolean(existingConnection);
+}
+
+async function serializeUser(
+  user: UserRow,
+  viewerUserId?: string,
+  options?: { includeConnectionStatus?: boolean }
+): Promise<UserResponse> {
   const stats = await computeUserStats(user.id);
   const visibilityLevel = normalizeVisibilityLevel(user.visibilityLevel);
   const isOwner = viewerUserId === user.id;
   const canSeeRealName = isOwner || visibilityLevel === "realName";
+  const shouldIncludeConnectionStatus = Boolean(
+    options?.includeConnectionStatus && viewerUserId && viewerUserId !== user.id
+  );
+  let isConnected: boolean | undefined;
+  if (shouldIncludeConnectionStatus && viewerUserId) {
+    isConnected = await areUsersConnected(viewerUserId, user.id);
+  }
 
   return {
     id: user.id,
     anonAlias: user.anonAlias,
     anonAvatarSeed: user.anonAvatarSeed,
     realName: canSeeRealName ? user.realName ?? undefined : undefined,
+    isConnected,
     university: user.university,
     graduationYear: user.graduationYear,
     visibilityLevel,
@@ -583,6 +628,36 @@ async function getConversationIdentity(
   };
 }
 
+async function getMutuallyRevealedPeerUserIds(viewerUserId: string): Promise<Set<string>> {
+  const revealedConversationRows = await db
+    .select({ conversationId: conversationParticipantsTable.conversationId })
+    .from(conversationParticipantsTable)
+    .innerJoin(conversationsTable, eq(conversationParticipantsTable.conversationId, conversationsTable.id))
+    .where(
+      and(
+        eq(conversationParticipantsTable.userId, viewerUserId),
+        eq(conversationsTable.isIdentityMutuallyRevealed, true)
+      )
+    );
+
+  const conversationIds = revealedConversationRows.map((row) => row.conversationId);
+  if (conversationIds.length === 0) {
+    return new Set();
+  }
+
+  const peerRows = await db
+    .select({ userId: conversationParticipantsTable.userId })
+    .from(conversationParticipantsTable)
+    .where(
+      and(
+        inArray(conversationParticipantsTable.conversationId, conversationIds),
+        sql`${conversationParticipantsTable.userId} <> ${viewerUserId}`
+      )
+    );
+
+  return new Set(peerRows.map((row) => row.userId));
+}
+
 async function fetchPosts(options?: {
   filter?: string;
   where?: SQL<unknown>;
@@ -649,6 +724,10 @@ async function fetchPosts(options?: {
     );
   }
 
+  const revealedPeerUserIds = options?.viewerId
+    ? await getMutuallyRevealedPeerUserIds(options.viewerId)
+    : new Set<string>();
+
   return rows.map(
     ({
       post,
@@ -669,11 +748,15 @@ async function fetchPosts(options?: {
         graduationYear: authorGraduationYear,
         fieldsOfInterest: authorFieldsOfInterest,
       });
+      const revealedInConversation = Boolean(options?.viewerId && revealedPeerUserIds.has(post.authorId));
 
       return {
         id: post.id,
         authorId: post.authorId,
         authorAlias: visibleAuthor.displayName,
+        authorRealName: revealedInConversation
+          ? (authorRealName?.trim() || undefined)
+          : visibleAuthor.realName,
         authorAvatarSeed,
         authorVisibilityLevel: visibleAuthor.visibilityLevel,
         authorRole: visibleAuthor.role,
@@ -687,7 +770,7 @@ async function fetchPosts(options?: {
         tags: post.tags,
         upvotes: post.upvotes,
         commentCount: post.commentCount,
-        isAnonymous: visibleAuthor.isAnonymous,
+        isAnonymous: revealedInConversation ? false : visibleAuthor.isAnonymous,
         createdAt: toIso(post.createdAt),
         updatedAt: toIso(post.updatedAt),
         userVote: voteByPostId.get(post.id) ?? 0,
@@ -780,7 +863,7 @@ async function getCompanyList() {
   }));
 }
 
-async function getPlatformStats(): Promise<PlatformStats> {
+async function readPlatformStats(): Promise<PlatformStats> {
   const [usersCountRow] = await db.select({ count: count() }).from(usersTable);
   const [postsCountRow] = await db.select({ count: count() }).from(postsTable);
   const [commentsCountRow] = await db.select({ count: count() }).from(commentsTable);
@@ -839,6 +922,18 @@ async function getPlatformStats(): Promise<PlatformStats> {
       messagesPerUser: roundMetric(messages / safeUserDivisor, 2),
     },
   };
+}
+
+async function getPlatformStats(): Promise<PlatformStats> {
+  let stats = await readPlatformStats();
+
+  // Self-heal empty local/dev databases so landing metrics and company profiles do not render as blank/zero.
+  if (stats.users === 0 && stats.posts === 0 && stats.messages === 0 && stats.companies === 0) {
+    await seedDatabase(db);
+    stats = await readPlatformStats();
+  }
+
+  return stats;
 }
 
 async function applyPostVote(postId: string, userId: string, nextValue: PostVoteValue) {
@@ -1269,7 +1364,7 @@ const app = new Elysia()
       return { message: "User not found" };
     }
     const auth = await getAuthSession(headers as Record<string, string | undefined>);
-    return await serializeUser(user, auth?.user.id);
+    return await serializeUser(user, auth?.user.id, { includeConnectionStatus: true });
   })
   .get("/api/users/:id/posts", async ({ params, headers }) => {
     const auth = await getAuthSession(headers as Record<string, string | undefined>);
@@ -1303,7 +1398,6 @@ const app = new Elysia()
         const interests = user.fieldsOfInterest.join(" ").toLowerCase();
         return (
           user.anonAlias.toLowerCase().includes(q) ||
-          (user.realName ?? "").toLowerCase().includes(q) ||
           user.university.toLowerCase().includes(q) ||
           interests.includes(q)
         );
@@ -1406,7 +1500,14 @@ const app = new Elysia()
   .get("/api/companies", async () => getCompanyList())
   .get("/api/companies/:id", async ({ params, set }) => {
     const companies = await getCompanyList();
-    const company = companies.find((item) => item.id === params.id);
+    const lookupKey = normalizeCompanyLookupKey(params.id);
+    const company = companies.find((item) => {
+      if (item.id === params.id) return true;
+      return (
+        normalizeCompanyLookupKey(item.id) === lookupKey ||
+        normalizeCompanyLookupKey(item.name) === lookupKey
+      );
+    });
     if (!company) {
       set.status = 404;
       return { message: "Company not found" };
@@ -1415,8 +1516,18 @@ const app = new Elysia()
   })
   .get("/api/companies/:id/posts", async ({ params, headers }) => {
     const auth = await getAuthSession(headers as Record<string, string | undefined>);
+    const companies = await getCompanyList();
+    const lookupKey = normalizeCompanyLookupKey(params.id);
+    const company = companies.find((item) => {
+      if (item.id === params.id) return true;
+      return (
+        normalizeCompanyLookupKey(item.id) === lookupKey ||
+        normalizeCompanyLookupKey(item.name) === lookupKey
+      );
+    });
+    if (!company) return [];
     return fetchPosts({
-      where: eq(postsTable.companyId, params.id),
+      where: eq(postsTable.companyId, company.id),
       orderBy: "recent",
       viewerId: auth?.user.id,
     });
@@ -1541,6 +1652,7 @@ const app = new Elysia()
       id,
       authorId: auth.user.id,
       authorAlias: authorPresentation.displayName,
+      authorRealName: authorPresentation.realName,
       authorAvatarSeed: auth.user.anonAvatarSeed,
       authorVisibilityLevel: authorPresentation.visibilityLevel,
       authorRole: authorPresentation.role,
@@ -1777,6 +1889,10 @@ const app = new Elysia()
       );
     }
 
+    const revealedPeerUserIds = auth?.user.id
+      ? await getMutuallyRevealedPeerUserIds(auth.user.id)
+      : new Set<string>();
+
     return buildCommentsTree(
       rows.map((row) => {
         const visibleAuthor = getUserVisibilityPresentation({
@@ -1787,12 +1903,18 @@ const app = new Elysia()
           graduationYear: row.authorGraduationYear,
           fieldsOfInterest: row.authorFieldsOfInterest,
         });
+        const revealedInConversation = auth?.user.id
+          ? revealedPeerUserIds.has(row.authorId)
+          : false;
 
         return {
           id: row.id,
           postId: row.postId,
           authorId: row.authorId,
           authorAlias: visibleAuthor.displayName,
+          authorRealName: revealedInConversation
+            ? (row.authorRealName?.trim() || undefined)
+            : visibleAuthor.realName,
           authorVisibilityLevel: visibleAuthor.visibilityLevel,
           authorRole: visibleAuthor.role,
           authorSchool: visibleAuthor.school,
@@ -1800,7 +1922,7 @@ const app = new Elysia()
           content: row.content,
           upvotes: row.upvotes,
           userVote: voteByCommentId.get(row.id) ?? 0,
-          isAnonymous: visibleAuthor.isAnonymous,
+          isAnonymous: revealedInConversation ? false : visibleAuthor.isAnonymous,
           createdAt: toIso(row.createdAt),
           parentCommentId: row.parentCommentId,
         };
@@ -1889,6 +2011,7 @@ const app = new Elysia()
       postId: params.id,
       authorId: auth.user.id,
       authorAlias: authorPresentation.displayName,
+      authorRealName: authorPresentation.realName,
       authorVisibilityLevel: authorPresentation.visibilityLevel,
       authorRole: authorPresentation.role,
       authorSchool: authorPresentation.school,
@@ -1982,6 +2105,7 @@ const app = new Elysia()
       postId: updated.postId,
       authorId: updated.authorId,
       authorAlias: authorPresentation.displayName,
+      authorRealName: authorPresentation.realName,
       authorVisibilityLevel: authorPresentation.visibilityLevel,
       authorRole: authorPresentation.role,
       authorSchool: authorPresentation.school,

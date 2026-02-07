@@ -5,6 +5,7 @@ export interface User {
   anonAlias: string;
   anonAvatarSeed: string;
   realName?: string;
+  isConnected?: boolean;
   university: string;
   graduationYear: number;
   visibilityLevel: "anonymous" | "role" | "school" | "realName";
@@ -35,6 +36,7 @@ export interface Post {
   id: string;
   authorId: string;
   authorAlias: string;
+  authorRealName?: string;
   authorAvatarSeed: string;
   authorVisibilityLevel: "anonymous" | "role" | "school" | "realName";
   authorRole?: string;
@@ -59,6 +61,7 @@ export interface Comment {
   postId: string;
   authorId: string;
   authorAlias: string;
+  authorRealName?: string;
   authorVisibilityLevel: "anonymous" | "role" | "school" | "realName";
   authorRole?: string;
   authorSchool?: string;

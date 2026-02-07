@@ -141,10 +141,15 @@ export function TopNav() {
                               setShowResults(false);
                               navigate(`/profile/${result.id}`);
                             }}
-                            className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                            className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
                           >
-                            <UserRound size={14} className="text-slate-500 dark:text-slate-400" />
-                            <span className="text-sm text-slate-900 dark:text-white">{result.realName || result.anonAlias}</span>
+                            <UserRound size={14} className="mt-0.5 text-slate-500 dark:text-slate-400" />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm text-slate-900 dark:text-white">{result.anonAlias}</p>
+                              {result.realName && (
+                                <p className="truncate text-xs text-slate-500 dark:text-slate-400">{result.realName}</p>
+                              )}
+                            </div>
                           </button>
                         ))}
                       </div>
@@ -162,7 +167,9 @@ export function TopNav() {
                             key={result.id}
                             onClick={() => {
                               setShowResults(false);
-                              navigate(`/company/${result.id}`);
+                              navigate(`/company/${result.id}`, {
+                                state: { companyPreview: result },
+                              });
                             }}
                             className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
                           >

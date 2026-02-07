@@ -16,7 +16,7 @@ export const visibilityDescriptions: Record<VisibilityLevel, string> = {
   anonymous: "Only your alias and avatar are shown",
   role: "Your field of interest is visible",
   school: "Your university and graduation year are visible",
-  realName: "Your full name and profile are visible",
+  realName: "Alias stays primary; your real name is added",
 };
 
 interface AuthState {
@@ -31,6 +31,7 @@ interface AuthState {
   getDisplayName: () => string;
   getVisibleInfo: () => {
     name: string;
+    realName?: string;
     role?: string;
     school?: string;
     year?: number;
@@ -75,15 +76,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       getDisplayName: () => {
-        const { user, visibilityLevel } = get();
+        const { user } = get();
         if (!user) return "Anonymous";
-
-        switch (visibilityLevel) {
-          case "realName":
-            return user.realName || user.anonAlias;
-          default:
-            return user.anonAlias;
-        }
+        return user.anonAlias;
       },
 
       getVisibleInfo: () => {
@@ -92,13 +87,14 @@ export const useAuthStore = create<AuthState>()(
 
         const info: {
           name: string;
+          realName?: string;
           role?: string;
           school?: string;
           year?: number;
         } = { name: user.anonAlias };
 
         if (visibilityLevel === "realName") {
-          info.name = user.realName || user.anonAlias;
+          info.realName = user.realName || undefined;
           info.role = user.fieldsOfInterest[0];
           info.school = user.university;
           info.year = user.graduationYear;

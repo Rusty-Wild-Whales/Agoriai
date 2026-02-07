@@ -15,7 +15,7 @@ function seededRandom(seed: number): number {
 export function StarField() {
   const stars = useMemo(
     () =>
-      Array.from({ length: 110 }, (_, i) => {
+      Array.from({ length: 82 }, (_, i) => {
         const base = i + 1;
         const baseOpacity = seededRandom(base * 31) * 0.45 + 0.2;
         const colorValue = seededRandom(base * 17);
@@ -106,7 +106,9 @@ export default function Landing() {
   const { data: platformStats } = useQuery({
     queryKey: ["platform-stats"],
     queryFn: () => agoraApi.getPlatformStats(),
-    staleTime: 60_000,
+    staleTime: 15_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const countFormatter = new Intl.NumberFormat("en-US");
@@ -126,7 +128,8 @@ export default function Landing() {
     <div className="relative h-screen bg-[#070f1d] font-body overflow-hidden">
       <div
         ref={scrollContainerRef}
-        className="relative z-10 h-full overflow-y-auto overflow-x-hidden snap-y snap-proximity scroll-smooth"
+        className="relative z-10 h-full overflow-y-auto overflow-x-hidden overscroll-y-contain snap-y snap-mandatory"
+        style={{ scrollBehavior: "auto" }}
       >
         {/* Hero Section */}
         <motion.section
@@ -145,20 +148,17 @@ export default function Landing() {
             style={{ opacity: heroOpacity, y: heroY }}
             className="relative z-10 text-center px-6 max-w-4xl mx-auto"
           >
-            <motion.h1
-              initial={{ opacity: 0.65, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1, delay: 0, ease: [0.25, 1, 0.25, 1] }}
+            <h1
               className="font-display text-6xl md:text-8xl font-bold text-white mb-8 tracking-tight"
               style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
             >
               <span className="text-white">agoriai</span>
-            </motion.h1>
+            </h1>
 
             <motion.p
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+              transition={{ duration: 0.5, delay: 0.08, ease: [0.25, 0.1, 0.25, 1] }}
               className="text-xl md:text-2xl text-slate-200 mb-3 font-light"
             >
               Career access is a financial equity problem.
@@ -167,7 +167,7 @@ export default function Landing() {
             <motion.p
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
+              transition={{ duration: 0.5, delay: 0.16, ease: [0.25, 0.1, 0.25, 1] }}
               className="text-base text-slate-400 mb-12"
             >
               We are building the solution.
@@ -176,7 +176,7 @@ export default function Landing() {
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.9, ease: [0.25, 0.1, 0.25, 1] }}
+              transition={{ duration: 0.5, delay: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
             >
               <Link to="/onboarding">
                 <Button
@@ -194,7 +194,7 @@ export default function Landing() {
             style={{ opacity: heroOpacity }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.5, duration: 0.8 }}
+            transition={{ delay: 0.5, duration: 0.45 }}
             className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
           >
             <span className="text-amber-500/70 text-xs tracking-[0.2em] uppercase">

@@ -122,16 +122,19 @@ export default function UserProfile() {
   }, [id, currentUser?.id]);
 
   const isOwnProfile = Boolean(user && currentUser && user.id === currentUser.id);
+  const isConnected = Boolean(user && !isOwnProfile && user.isConnected);
   const canShowRole = Boolean(user && (isOwnProfile || user.visibilityLevel === "role" || user.visibilityLevel === "school" || user.visibilityLevel === "realName"));
   const canShowSchool = Boolean(user && (isOwnProfile || user.visibilityLevel === "school" || user.visibilityLevel === "realName"));
+  const canShowRealName = Boolean(user && user.realName && (isOwnProfile || user.visibilityLevel === "realName"));
 
   const handleConnect = async () => {
-    if (!user || !currentUser || isOwnProfile) return;
+    if (!user || !currentUser || isOwnProfile || isConnected) return;
     setActionLoading(true);
     setActionMessage(null);
     try {
       const result = await agoraApi.connectUser(user.id);
       setActionMessage(result.alreadyConnected ? "Already connected." : "Connection created.");
+      setUser((prev) => (prev ? { ...prev, isConnected: true } : prev));
       if (!result.alreadyConnected) {
         const refreshedProfile = await agoraApi.getUser(user.id);
         setUser(refreshedProfile);
@@ -183,8 +186,11 @@ export default function UserProfile() {
         <div className="flex flex-col items-center text-center">
           <Avatar seed={user.anonAvatarSeed} size="xl" />
           <h1 className="font-display text-2xl font-bold text-primary-900 dark:text-white mt-4">
-            {user.realName || user.anonAlias}
+            {user.anonAlias}
           </h1>
+          {canShowRealName && (
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{user.realName}</p>
+          )}
           <div className="flex items-center gap-1.5 text-sm text-neutral-500 mt-1">
             {user.isAnonymous ? (
               <>
@@ -218,8 +224,8 @@ export default function UserProfile() {
 
           {!isOwnProfile && (
             <div className="mt-5 flex flex-wrap justify-center gap-2">
-              <Button onClick={handleConnect} disabled={actionLoading}>
-                Connect
+              <Button onClick={handleConnect} disabled={actionLoading || isConnected}>
+                {isConnected ? "Connected" : "Connect"}
               </Button>
               <Button variant="secondary" onClick={handleMessage} disabled={actionLoading}>
                 Message
@@ -227,6 +233,9 @@ export default function UserProfile() {
             </div>
           )}
 
+          {!isOwnProfile && isConnected && (
+            <p className="mt-3 text-xs text-emerald-600 dark:text-emerald-400">Already connected.</p>
+          )}
           {actionMessage && <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{actionMessage}</p>}
         </div>
       </Card>

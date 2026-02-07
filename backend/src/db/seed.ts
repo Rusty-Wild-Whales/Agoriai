@@ -47,15 +47,31 @@ function aliasEmail(alias: string, university: string, idx: number) {
   return `${localPart || `student${idx + 1}`}@${toSchoolDomain(university)}`;
 }
 
-async function buildAuthAccounts(users: Array<typeof usersTable.$inferInsert>) {
+async function buildAuthAccounts(
+  users: Array<{
+    id: string;
+    anonAlias: string;
+    university: string;
+    createdAt: Date | string | null;
+  }>
+) {
   const passwordHash = await Bun.password.hash(demoSeedPassword);
-  return users.map((user, idx) => ({
-    userId: user.id,
-    schoolEmail: aliasEmail(user.anonAlias, user.university, idx),
-    passwordHash,
-    createdAt: user.createdAt ?? new Date(),
-    updatedAt: user.createdAt ?? new Date(),
-  })) satisfies Array<typeof authAccountsTable.$inferInsert>;
+  return users.map((user, idx) => {
+    const createdAt =
+      user.createdAt instanceof Date
+        ? user.createdAt
+        : user.createdAt
+          ? new Date(user.createdAt)
+          : new Date();
+
+    return {
+      userId: user.id,
+      schoolEmail: aliasEmail(user.anonAlias, user.university, idx),
+      passwordHash,
+      createdAt,
+      updatedAt: createdAt,
+    };
+  }) satisfies Array<typeof authAccountsTable.$inferInsert>;
 }
 
 const users: Array<typeof usersTable.$inferInsert> = [
@@ -863,39 +879,71 @@ const commentVotes: Array<typeof commentVotesTable.$inferInsert> = [
 ];
 
 export async function seedDatabase(db: ReturnType<typeof drizzle>) {
-  const [existingUsers] = await db.select({ count: count() }).from(usersTable);
+  await db.insert(usersTable).values(users).onConflictDoNothing();
 
-  const existingCount = Number(existingUsers?.count ?? 0);
-
-  if (existingCount === 0) {
-    const authAccounts = await buildAuthAccounts(users);
-
-    await db.transaction(async (tx) => {
-      await tx.insert(usersTable).values(users);
-      await tx.insert(authAccountsTable).values(authAccounts);
-      await tx.insert(companiesTable).values(companies);
-      await tx.insert(internshipsTable).values(internships);
-      await tx.insert(postsTable).values(posts);
-      await tx.insert(commentsTable).values(comments);
-      await tx.insert(postVotesTable).values(postVotes);
-      await tx.insert(commentVotesTable).values(commentVotes);
-      await tx.insert(connectionsTable).values(connections);
-      await tx.insert(conversationsTable).values(conversations);
-      await tx.insert(conversationParticipantsTable).values(conversationParticipants);
-      await tx.insert(messagesTable).values(messages);
-    });
-
-    return;
+  const existingUserRows = await db
+    .select({
+      id: usersTable.id,
+      anonAlias: usersTable.anonAlias,
+      university: usersTable.university,
+      createdAt: usersTable.createdAt,
+    })
+    .from(usersTable);
+  const existingAuthRows = await db.select({ userId: authAccountsTable.userId }).from(authAccountsTable);
+  const authByUser = new Set(existingAuthRows.map((row) => row.userId));
+  const usersMissingAuth = existingUserRows.filter((user) => !authByUser.has(user.id));
+  if (usersMissingAuth.length > 0) {
+    const missingAccounts = await buildAuthAccounts(usersMissingAuth);
+    await db.insert(authAccountsTable).values(missingAccounts).onConflictDoNothing();
   }
 
-  const [existingAuthAccounts] = await db.select({ count: count() }).from(authAccountsTable);
-  const authAccountCount = Number(existingAuthAccounts?.count ?? 0);
+  const [companyCountRow] = await db.select({ count: count() }).from(companiesTable);
+  if (Number(companyCountRow?.count ?? 0) === 0) {
+    await db.insert(companiesTable).values(companies);
+  }
 
-  if (authAccountCount === 0) {
-    const existingUserRows = await db.select().from(usersTable);
-    const missingAccounts = await buildAuthAccounts(existingUserRows);
-    if (missingAccounts.length > 0) {
-      await db.insert(authAccountsTable).values(missingAccounts);
-    }
+  const [internshipCountRow] = await db.select({ count: count() }).from(internshipsTable);
+  if (Number(internshipCountRow?.count ?? 0) === 0) {
+    await db.insert(internshipsTable).values(internships);
+  }
+
+  const [postCountRow] = await db.select({ count: count() }).from(postsTable);
+  if (Number(postCountRow?.count ?? 0) === 0) {
+    await db.insert(postsTable).values(posts);
+  }
+
+  const [commentCountRow] = await db.select({ count: count() }).from(commentsTable);
+  if (Number(commentCountRow?.count ?? 0) === 0) {
+    await db.insert(commentsTable).values(comments);
+  }
+
+  const [postVoteCountRow] = await db.select({ count: count() }).from(postVotesTable);
+  if (Number(postVoteCountRow?.count ?? 0) === 0) {
+    await db.insert(postVotesTable).values(postVotes);
+  }
+
+  const [commentVoteCountRow] = await db.select({ count: count() }).from(commentVotesTable);
+  if (Number(commentVoteCountRow?.count ?? 0) === 0) {
+    await db.insert(commentVotesTable).values(commentVotes);
+  }
+
+  const [connectionCountRow] = await db.select({ count: count() }).from(connectionsTable);
+  if (Number(connectionCountRow?.count ?? 0) === 0) {
+    await db.insert(connectionsTable).values(connections);
+  }
+
+  const [conversationCountRow] = await db.select({ count: count() }).from(conversationsTable);
+  if (Number(conversationCountRow?.count ?? 0) === 0) {
+    await db.insert(conversationsTable).values(conversations);
+  }
+
+  const [participantCountRow] = await db.select({ count: count() }).from(conversationParticipantsTable);
+  if (Number(participantCountRow?.count ?? 0) === 0) {
+    await db.insert(conversationParticipantsTable).values(conversationParticipants);
+  }
+
+  const [messageCountRow] = await db.select({ count: count() }).from(messagesTable);
+  if (Number(messageCountRow?.count ?? 0) === 0) {
+    await db.insert(messagesTable).values(messages);
   }
 }
