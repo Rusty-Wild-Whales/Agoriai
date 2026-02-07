@@ -4,9 +4,10 @@ import { Send, Eye, AlertCircle, UserCheck, Sparkles } from "lucide-react";
 import { Avatar } from "../components/ui/Avatar";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
-import { mockApi } from "../services/mockApi";
+import { agoraApi } from "../services/agoraApi";
 import { formatDate } from "../utils/helpers";
 import type { Conversation, Message } from "../types";
+import { useAuthStore } from "../stores/authStore";
 
 interface SystemMessage {
   id: string;
@@ -23,6 +24,7 @@ function isSystemMessage(msg: ChatMessage): msg is SystemMessage {
 }
 
 export default function Messages() {
+  const { user } = useAuthStore();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -35,49 +37,82 @@ export default function Messages() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const currentUserId = "u1";
-  const currentUserRealName = "Alex Chen";
+  const currentUserId = user?.id ?? "u1";
+  const currentUserRealName = user?.realName ?? "Alex Chen";
 
   useEffect(() => {
-    mockApi.getConversations().then((data) => {
-      setConversations(data);
-      if (data.length > 0) setActiveConvId(data[0].id);
-      setLoading(false);
-    });
-  }, []);
+    let cancelled = false;
+
+    void agoraApi
+      .getConversations(currentUserId)
+      .then((data) => {
+        if (cancelled) return;
+        setConversations(data);
+        if (data.length > 0) {
+          setActiveConvId((prev) => prev ?? data[0].id);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Failed to load conversations", error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserId]);
 
   useEffect(() => {
     if (!activeConvId) return;
 
-    mockApi.getMessages(activeConvId).then((msgs) => {
-      const revealInfo = revealedIdentities[activeConvId];
-      if (!revealInfo) {
-        setMessages(msgs);
-        return;
-      }
+    let cancelled = false;
 
-      const chatMessages: ChatMessage[] = [...msgs];
-      const systemMsg: SystemMessage = {
-        id: `sys-${activeConvId}`,
-        type: "identity-reveal",
-        userId: currentUserId,
-        userName: revealInfo.name,
-        createdAt: revealInfo.timestamp,
-      };
+    void agoraApi
+      .getMessages(activeConvId)
+      .then((msgs) => {
+        if (cancelled) return;
 
-      const insertIndex = chatMessages.findIndex(
-        (message) => new Date(message.createdAt) > new Date(revealInfo.timestamp)
-      );
+        const revealInfo = revealedIdentities[activeConvId];
+        if (!revealInfo) {
+          setMessages(msgs);
+          return;
+        }
 
-      if (insertIndex === -1) {
-        chatMessages.push(systemMsg);
-      } else {
-        chatMessages.splice(insertIndex, 0, systemMsg);
-      }
+        const chatMessages: ChatMessage[] = [...msgs];
+        const systemMsg: SystemMessage = {
+          id: `sys-${activeConvId}`,
+          type: "identity-reveal",
+          userId: currentUserId,
+          userName: revealInfo.name,
+          createdAt: revealInfo.timestamp,
+        };
 
-      setMessages(chatMessages);
-    });
-  }, [activeConvId, revealedIdentities]);
+        const insertIndex = chatMessages.findIndex(
+          (message) => new Date(message.createdAt) > new Date(revealInfo.timestamp)
+        );
+
+        if (insertIndex === -1) {
+          chatMessages.push(systemMsg);
+        } else {
+          chatMessages.splice(insertIndex, 0, systemMsg);
+        }
+
+        setMessages(chatMessages);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Failed to load messages", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeConvId, revealedIdentities, currentUserId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -99,7 +134,10 @@ export default function Messages() {
     const trimmed = newMessage.trim();
     if (!trimmed || !activeConvId) return;
 
-    const msg = await mockApi.sendMessage(activeConvId, trimmed);
+    const msg = await agoraApi.sendMessage(activeConvId, {
+      content: trimmed,
+      senderId: currentUserId,
+    });
     setMessages((prev) => [...prev, msg]);
 
     setConversations((prev) =>

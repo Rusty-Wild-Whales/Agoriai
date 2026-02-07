@@ -12,7 +12,7 @@ import { Badge } from "../ui/Badge";
 import type { Post, Comment } from "../../types";
 import { formatDate, categoryLabel } from "../../utils/helpers";
 import { CommentThread } from "./CommentThread";
-import { mockApi } from "../../services/mockApi";
+import { agoraApi } from "../../services/agoraApi";
 
 const categoryVariants: Record<string, "default" | "accent" | "success" | "warning"> = {
   "interview-experience": "accent",
@@ -42,7 +42,7 @@ export function PostCard({ post, onUpvote }: PostCardProps) {
 
     setLoadingComments(true);
     try {
-      const data = await mockApi.getComments(post.id);
+      const data = await agoraApi.getComments(post.id);
       setComments(data);
       const total = data.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
       setCommentCount(total);

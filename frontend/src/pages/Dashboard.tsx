@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
   FileText,
   MessageCircle,
@@ -17,9 +18,9 @@ import {
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { useAuthStore } from "../stores/authStore";
-import { mockPosts } from "../mocks/data";
 import { formatDate, categoryLabel } from "../utils/helpers";
 import { useTutorial } from "../components/tutorial/TutorialProvider";
+import { agoraApi } from "../services/agoraApi";
 
 function AnimatedCounter({
   value,
@@ -98,12 +99,14 @@ export default function Dashboard() {
   const { startTutorial, completedTutorials, activeTutorial } = useTutorial();
   const autoStartAttemptedRef = useRef(false);
   const stats = user?.stats;
-
-  const recentPosts = useMemo(() => mockPosts.slice(0, 5), []);
-  const trendingPosts = useMemo(
-    () => [...mockPosts].sort((a, b) => b.upvotes - a.upvotes).slice(0, 5),
-    []
-  );
+  const { data: recentPosts = [] } = useQuery({
+    queryKey: ["dashboard", "recent-posts"],
+    queryFn: () => agoraApi.getRecentPosts(5),
+  });
+  const { data: trendingPosts = [] } = useQuery({
+    queryKey: ["dashboard", "trending-posts"],
+    queryFn: () => agoraApi.getTrendingPosts(5),
+  });
 
   const showWelcomeBanner = !completedTutorials.includes("welcome");
 

@@ -6,9 +6,8 @@ import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { PostCard } from "../components/feed/PostCard";
 import { Skeleton } from "../components/ui/Skeleton";
-import { mockApi } from "../services/mockApi";
-import { mockPosts } from "../mocks/data";
-import type { Company } from "../types";
+import { agoraApi } from "../services/agoraApi";
+import type { Company, Post } from "../types";
 
 function RatingBar({ label, value }: { label: string; value: number }) {
   const percentage = (value / 5) * 100;
@@ -33,17 +32,35 @@ function RatingBar({ label, value }: { label: string; value: number }) {
 export default function CompanyProfile() {
   const { id } = useParams<{ id: string }>();
   const [company, setCompany] = useState<Company | null>(null);
+  const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
-    mockApi.getCompany(id).then((data) => {
-      setCompany(data || null);
-      setLoading(false);
-    });
-  }, [id]);
+    let cancelled = false;
 
-  const relatedPosts = mockPosts.filter((p) => p.companyId === id);
+    void Promise.all([agoraApi.getCompany(id), agoraApi.getCompanyPosts(id)])
+      .then(([companyData, posts]) => {
+        if (cancelled) return;
+        setCompany(companyData || null);
+        setRelatedPosts(posts);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Failed to load company profile", error);
+        setCompany(null);
+        setRelatedPosts([]);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   if (loading) {
     return (
