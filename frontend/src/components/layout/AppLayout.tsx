@@ -1,22 +1,31 @@
+import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
+import { SettingsModal } from "./SettingsModal";
+import { NotificationsPanel } from "./NotificationsPanel";
 import { useUIStore } from "../../stores/uiStore";
 
 export function AppLayout() {
   const { sidebarOpen } = useUIStore();
   const location = useLocation();
 
+  // Always apply dark mode for the app
+  useEffect(() => {
+    document.documentElement.classList.add("dark");
+  }, []);
+
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-slate-950 transition-colors">
       <Sidebar />
-      <div
-        className="transition-[margin] duration-200 ease-out"
-        style={{ marginLeft: sidebarOpen ? 240 : 72 }}
+      <motion.div
+        animate={{ marginLeft: sidebarOpen ? 240 : 72 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="min-h-screen flex flex-col"
       >
         <TopNav />
-        <main className="p-6">
+        <main className="flex-1 p-6 overflow-x-hidden">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -24,12 +33,17 @@ export function AppLayout() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
+              className="w-full"
             >
               <Outlet />
             </motion.div>
           </AnimatePresence>
         </main>
-      </div>
+      </motion.div>
+
+      {/* Global Modals */}
+      <SettingsModal />
+      <NotificationsPanel />
     </div>
   );
 }

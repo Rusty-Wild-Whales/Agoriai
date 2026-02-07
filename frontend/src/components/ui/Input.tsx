@@ -23,26 +23,26 @@ export function Input({
       {label && (
         <label
           htmlFor={inputId}
-          className="text-sm font-medium text-neutral-700"
+          className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
         >
           {label}
         </label>
       )}
       <div className="relative">
         {leftIcon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500">
             {leftIcon}
           </div>
         )}
         <input
           id={inputId}
-          className={`w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 transition-colors focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20 ${leftIcon ? "pl-10" : ""} ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : ""} ${className}`}
+          className={`w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2.5 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 transition-colors focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20 ${leftIcon ? "pl-10" : ""} ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : ""} ${className}`}
           {...props}
         />
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       {helperText && !error && (
-        <p className="text-xs text-neutral-500">{helperText}</p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">{helperText}</p>
       )}
     </div>
   );
@@ -69,19 +69,19 @@ export function Textarea({
       {label && (
         <label
           htmlFor={textareaId}
-          className="text-sm font-medium text-neutral-700"
+          className="text-sm font-medium text-neutral-700 dark:text-neutral-300"
         >
           {label}
         </label>
       )}
       <textarea
         id={textareaId}
-        className={`w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 transition-colors focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20 resize-y min-h-[100px] ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : ""} ${className}`}
+        className={`w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2.5 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 transition-colors focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20 resize-y min-h-[100px] ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : ""} ${className}`}
         {...props}
       />
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       {helperText && !error && (
-        <p className="text-xs text-neutral-500">{helperText}</p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">{helperText}</p>
       )}
     </div>
   );

@@ -4,17 +4,22 @@
   --font-display: "Fraunces", serif;
   --font-body: "Outfit", sans-serif;
 
-  --color-primary-900: #0f1729;
-  --color-primary-800: #1a2744;
-  --color-primary-700: #253760;
-  --color-primary-600: #30477c;
-  --color-primary-500: #3b5898;
-  --color-primary-400: #5a7ab8;
-  --color-primary-300: #7e9cd4;
-  --color-primary-200: #a8c0e8;
-  --color-primary-100: #d4e0f4;
-  --color-primary-50: #eef3fa;
+  /* Primary - Deep navy blues */
+  --color-primary-950: #020617;
+  --color-primary-900: #0f172a;
+  --color-primary-800: #1e293b;
+  --color-primary-700: #334155;
+  --color-primary-600: #475569;
+  --color-primary-500: #64748b;
+  --color-primary-400: #94a3b8;
+  --color-primary-300: #cbd5e1;
+  --color-primary-200: #e2e8f0;
+  --color-primary-100: #f1f5f9;
+  --color-primary-50: #f8fafc;
 
+  /* Accent - Amber/Gold */
+  --color-accent-900: #78350f;
+  --color-accent-800: #92400e;
   --color-accent-700: #b45309;
   --color-accent-600: #d97706;
   --color-accent-500: #f59e0b;
@@ -22,8 +27,10 @@
   --color-accent-300: #fcd34d;
   --color-accent-200: #fde68a;
   --color-accent-100: #fef3c7;
+  --color-accent-50: #fffbeb;
 
-  --color-neutral-950: #0a0a0b;
+  /* Neutral - Zinc grays */
+  --color-neutral-950: #09090b;
   --color-neutral-900: #18181b;
   --color-neutral-800: #27272a;
   --color-neutral-700: #3f3f46;
@@ -40,9 +47,36 @@
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Improve scrollbar styling for dark mode */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #27272a;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #52525b;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #71717a;
 }

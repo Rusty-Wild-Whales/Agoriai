@@ -57,7 +57,7 @@ function StatCallout({
         className={accent ? "text-accent-500 mx-auto mb-1" : "text-primary-400 mx-auto mb-1"}
       />
       <p
-        className={`text-2xl font-display font-bold ${accent ? "text-accent-600" : "text-primary-900"}`}
+        className={`text-2xl font-display font-bold ${accent ? "text-accent-600 dark:text-accent-500" : "text-primary-900 dark:text-white"}`}
       >
         {count}
       </p>
@@ -106,7 +106,7 @@ export default function UserProfile() {
       <Card>
         <div className="flex flex-col items-center text-center">
           <Avatar seed={user.anonAvatarSeed} size="xl" />
-          <h1 className="font-display text-2xl font-bold text-primary-900 mt-4">
+          <h1 className="font-display text-2xl font-bold text-primary-900 dark:text-white mt-4">
             {user.isAnonymous ? user.anonAlias : user.realName || user.anonAlias}
           </h1>
           <div className="flex items-center gap-1.5 text-sm text-neutral-500 mt-1">
@@ -173,13 +173,13 @@ export default function UserProfile() {
       {/* Contribution History */}
       <Card
         header={
-          <h3 className="font-display font-semibold text-primary-900">
+          <h3 className="font-display font-semibold text-primary-900 dark:text-white">
             Contribution History
           </h3>
         }
       >
         {userPosts.length === 0 ? (
-          <p className="text-sm text-neutral-400 text-center py-4">
+          <p className="text-sm text-neutral-400 dark:text-neutral-500 text-center py-4">
             No contributions yet.
           </p>
         ) : (
@@ -190,11 +190,11 @@ export default function UserProfile() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="flex items-start gap-3 p-2 -mx-2 rounded-lg hover:bg-neutral-50 transition-colors"
+                className="flex items-start gap-3 p-2 -mx-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
               >
                 <div className="w-1.5 h-1.5 rounded-full bg-accent-400 mt-2 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-primary-900 truncate">
+                  <p className="text-sm font-medium text-primary-900 dark:text-white truncate">
                     {post.title}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">

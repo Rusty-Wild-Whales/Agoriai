@@ -11,13 +11,15 @@ import {
   HelpCircle,
   Network,
   TrendingUp,
+  Sparkles,
+  BookOpen,
 } from "lucide-react";
-import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { useAuthStore } from "../stores/authStore";
 import { mockPosts } from "../mocks/data";
 import { formatDate, categoryLabel } from "../utils/helpers";
+import { useTutorial } from "../components/tutorial/TutorialProvider";
 
 function AnimatedCounter({ value, label, icon: Icon, accent = false }: { value: number; label: string; icon: React.ElementType; accent?: boolean }) {
   const [count, setCount] = useState(0);
@@ -44,35 +46,89 @@ function AnimatedCounter({ value, label, icon: Icon, accent = false }: { value: 
       initial={{ opacity: 0, y: 12 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.4 }}
+      className={`text-center p-5 rounded-xl border transition-all ${
+        accent
+          ? "bg-amber-500/10 border-amber-500/30"
+          : "bg-slate-800/50 border-slate-700/50 hover:border-slate-600/50"
+      }`}
     >
-      <Card className="text-center">
+      <div className={`p-2.5 rounded-xl mx-auto mb-3 w-fit ${accent ? "bg-amber-500/20" : "bg-slate-700/50"}`}>
         <Icon
           size={20}
-          className={accent ? "text-accent-500 mx-auto mb-2" : "text-primary-400 mx-auto mb-2"}
+          className={accent ? "text-amber-400" : "text-slate-400"}
         />
-        <p className={`text-3xl font-display font-bold ${accent ? "text-accent-600" : "text-primary-900"}`}>
-          {count}
-        </p>
-        <p className="text-xs text-neutral-500 mt-1">{label}</p>
-      </Card>
+      </div>
+      <p className={`text-3xl font-display font-bold ${accent ? "text-amber-400" : "text-white"}`}>
+        {count}
+      </p>
+      <p className="text-xs text-slate-500 mt-1">{label}</p>
     </motion.div>
   );
 }
 
 export default function Dashboard() {
   const { user } = useAuthStore();
+  const { startTutorial, completedTutorials } = useTutorial();
   const stats = user?.stats;
   const recentPosts = mockPosts.slice(0, 5);
   const trendingPosts = [...mockPosts].sort((a, b) => b.upvotes - a.upvotes).slice(0, 5);
 
+  const showWelcomeBanner = !completedTutorials.includes("welcome");
+
+  // Auto-start tutorial for first-time users
+  useEffect(() => {
+    if (showWelcomeBanner) {
+      // Small delay to let the page render first
+      const timer = setTimeout(() => {
+        startTutorial("welcome");
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [showWelcomeBanner, startTutorial]);
+
   return (
     <div className="max-w-7xl mx-auto space-y-8">
+      {/* Welcome Banner with Tutorial */}
+      {showWelcomeBanner && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-slate-800/80 to-slate-900 p-6 border border-slate-700/50"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-slate-500/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
+
+          <div className="relative z-10 flex items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-amber-500/20 backdrop-blur-sm">
+                <Sparkles size={28} className="text-amber-400" />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-semibold mb-1 text-white">
+                  Welcome to Agoriai, {user?.anonAlias || "Explorer"}!
+                </h2>
+                <p className="text-slate-400 text-sm">
+                  New here? Take a quick tour to learn how to make the most of the platform.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => startTutorial("welcome")}
+              className="shrink-0 bg-amber-500 hover:bg-amber-400 text-slate-900"
+            >
+              <BookOpen size={16} />
+              Start Tutorial
+            </Button>
+          </div>
+        </motion.div>
+      )}
+
       {/* Welcome */}
       <div>
-        <h2 className="font-display text-2xl font-semibold text-primary-900">
-          Welcome back, {user?.anonAlias || "Explorer"}
+        <h2 className="font-display text-2xl font-semibold text-white">
+          {showWelcomeBanner ? "Your Dashboard" : `Welcome back, ${user?.anonAlias || "Explorer"}`}
         </h2>
-        <p className="text-neutral-500 mt-1">
+        <p className="text-slate-500 mt-1">
           {stats
             ? `You've answered ${stats.questionsAnswered} questions this week. The Agora grows stronger.`
             : "Your contributions shape the community."}
@@ -80,7 +136,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div data-tutorial="dashboard-stats" className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <AnimatedCounter value={stats?.postsCreated ?? 0} label="Posts Created" icon={FileText} />
         <AnimatedCounter value={stats?.questionsAnswered ?? 0} label="Questions Answered" icon={MessageCircle} />
         <AnimatedCounter value={stats?.helpfulVotes ?? 0} label="Helpful Votes" icon={ThumbsUp} />
@@ -90,83 +146,89 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3">
-        <Link to="/feed">
-          <Button>
+        <Link to="/feed" data-tutorial="post-composer">
+          <Button className="bg-amber-500 hover:bg-amber-400 text-slate-900">
             <PenSquare size={16} /> Share an Experience
           </Button>
         </Link>
         <Link to="/feed">
-          <Button variant="secondary">
+          <Button variant="secondary" className="bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300">
             <HelpCircle size={16} /> Ask a Question
           </Button>
         </Link>
-        <Link to="/mosaic">
-          <Button variant="secondary">
-            <Network size={16} /> Explore the Mosaic
+        <Link to="/nexus">
+          <Button variant="secondary" className="bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300">
+            <Network size={16} /> Explore the Nexus
           </Button>
         </Link>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <Card header={
-          <div className="flex items-center gap-2">
-            <FileText size={16} className="text-primary-400" />
-            <h3 className="font-display font-semibold text-primary-900">Recent Activity</h3>
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-700/50 flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-slate-700/50">
+              <FileText size={14} className="text-slate-400" />
+            </div>
+            <h3 className="font-display font-semibold text-white">Recent Activity</h3>
           </div>
-        }>
-          <div className="space-y-3">
+          <div className="p-3 space-y-1">
             {recentPosts.map((post) => (
               <Link
                 key={post.id}
                 to="/feed"
-                className="flex items-start gap-3 p-2 -mx-2 rounded-lg hover:bg-neutral-50 transition-colors"
+                className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-700/30 transition-colors"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-primary-900 truncate">
+                  <p className="text-sm font-medium text-white truncate">
                     {post.title}
                   </p>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2 mt-1.5">
                     <Badge>{categoryLabel(post.category)}</Badge>
-                    <span className="text-xs text-neutral-400">
+                    <span className="text-xs text-slate-500">
                       {formatDate(post.createdAt)}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-neutral-400">
+                <div className="flex items-center gap-1 text-xs text-slate-500 bg-slate-700/50 px-2 py-1 rounded-full">
                   <ThumbsUp size={12} /> {post.upvotes}
                 </div>
               </Link>
             ))}
           </div>
-        </Card>
+        </div>
 
         {/* Trending */}
-        <Card header={
-          <div className="flex items-center gap-2">
-            <TrendingUp size={16} className="text-accent-500" />
-            <h3 className="font-display font-semibold text-primary-900">Trending on the Agora</h3>
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-700/50 flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-amber-500/20">
+              <TrendingUp size={14} className="text-amber-400" />
+            </div>
+            <h3 className="font-display font-semibold text-white">Trending on the Agora</h3>
           </div>
-        }>
-          <div className="space-y-3">
+          <div className="p-3 space-y-1">
             {trendingPosts.map((post, i) => (
               <Link
                 key={post.id}
                 to="/feed"
-                className="flex items-start gap-3 p-2 -mx-2 rounded-lg hover:bg-neutral-50 transition-colors"
+                className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-700/30 transition-colors"
               >
-                <span className={`text-lg font-display font-bold shrink-0 w-6 ${i < 3 ? "text-accent-500" : "text-neutral-300"}`}>
+                <span className={`flex items-center justify-center w-7 h-7 rounded-lg text-sm font-display font-bold shrink-0 ${
+                  i < 3
+                    ? "bg-amber-500/20 text-amber-400"
+                    : "bg-slate-700/50 text-slate-500"
+                }`}>
                   {i + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-primary-900 truncate">
+                  <p className="text-sm font-medium text-white truncate">
                     {post.title}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-neutral-500">
+                    <span className="text-xs text-slate-500">
                       {post.authorAlias}
                     </span>
-                    <span className="text-xs text-neutral-400">
+                    <span className="text-xs text-slate-600">
                       {post.upvotes} upvotes
                     </span>
                   </div>
@@ -174,7 +236,7 @@ export default function Dashboard() {
               </Link>
             ))}
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

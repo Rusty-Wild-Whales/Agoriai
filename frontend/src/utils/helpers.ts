@@ -13,16 +13,24 @@ export function formatDate(dateString: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+// More sophisticated, classy adjectives - avoiding playful/cute words
 const adjectives = [
-  "Stellar", "Quiet", "Bright", "Cosmic", "Swift", "Gentle", "Bold",
-  "Vivid", "Calm", "Noble", "Lucid", "Keen", "Warm", "Crisp", "Rare",
-  "Subtle", "Clever", "Steady", "Radiant", "Serene",
+  "Aureate", "Meridian", "Verdant", "Argent", "Obsidian", "Cerulean", "Ember",
+  "Granite", "Ivory", "Opal", "Onyx", "Scarlet", "Cobalt", "Sepia", "Slate",
+  "Copper", "Bronze", "Indigo", "Crimson", "Ochre", "Amber", "Sable",
+  "Lunar", "Solar", "Astral", "Arctic", "Alpine", "Boreal", "Cardinal",
+  "Prime", "Noble", "Grand", "Sage", "Elder", "Arch", "Apex", "Crest",
+  "Zenith", "Nadir", "Equinox", "Solstice", "Haven", "Vale", "Summit",
 ];
 
+// More elegant, professional nouns - nature and classical references
 const nouns = [
-  "Penguin", "Maple", "Lantern", "Falcon", "Cedar", "Prism", "Compass",
-  "Harbor", "Quartz", "Orchid", "Ember", "Sage", "Crest", "Drift", "Atlas",
-  "Fern", "Summit", "Beacon", "Pixel", "Lotus",
+  "Thesis", "Axiom", "Cipher", "Vector", "Nexus", "Vertex", "Radius",
+  "Meridian", "Zenith", "Orbit", "Prism", "Index", "Quorum", "Ledger",
+  "Archive", "Chronicle", "Scribe", "Scholar", "Consul", "Arbiter",
+  "Sentinel", "Warden", "Herald", "Envoy", "Steward", "Rector", "Proctor",
+  "Anchor", "Compass", "Horizon", "Latitude", "Longitude", "Equator",
+  "Pinnacle", "Citadel", "Bastion", "Paragon", "Vanguard", "Catalyst",
 ];
 
 export function generateAnonName(seed: string): string {

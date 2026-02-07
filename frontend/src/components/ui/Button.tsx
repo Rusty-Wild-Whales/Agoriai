@@ -14,9 +14,9 @@ const variantClasses: Record<Variant, string> = {
   primary:
     "bg-accent-500 text-primary-900 hover:bg-accent-400 focus-visible:ring-accent-500",
   secondary:
-    "border border-primary-700 text-primary-700 hover:bg-primary-50 focus-visible:ring-primary-500",
+    "border border-primary-700 dark:border-primary-500 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/50 focus-visible:ring-primary-500",
   ghost:
-    "text-neutral-600 hover:bg-neutral-100 focus-visible:ring-neutral-400",
+    "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 focus-visible:ring-neutral-400",
   danger:
     "bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500",
 };
@@ -39,7 +39,7 @@ export function Button({
   return (
     <motion.button
       whileTap={{ scale: 0.97 }}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-900 disabled:opacity-50 disabled:pointer-events-none cursor-pointer ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       disabled={disabled || isLoading}
       {...(props as React.ComponentProps<typeof motion.button>)}
     >
