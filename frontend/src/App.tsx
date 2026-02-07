@@ -5,8 +5,8 @@ import { queryClient } from "./lib/queryClient";
 import { AppLayout } from "./components/layout/AppLayout";
 import { useAuthStore } from "./stores/authStore";
 import { useUIStore } from "./stores/uiStore";
-import { mockUsers } from "./mocks/data";
 import { TutorialProvider } from "./components/tutorial/TutorialProvider";
+import { agoraApi } from "./services/agoraApi";
 
 const Landing = lazy(() => import("./pages/Landing"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
@@ -37,9 +37,24 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
   const { setUser, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setUser(mockUsers[0]);
-    }
+    if (isAuthenticated) return;
+
+    let cancelled = false;
+
+    void agoraApi
+      .getCurrentUser()
+      .then((user) => {
+        if (!cancelled) {
+          setUser(user);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to initialize auth user", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [setUser, isAuthenticated]);
 
   return <>{children}</>;

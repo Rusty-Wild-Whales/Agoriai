@@ -4,7 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts"
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -16,6 +20,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@elysiajs/cors": "^1.4.1",
     "dotenv": "^17.2.4",
     "drizzle-orm": "^0.45.1",
     "elysia": "^1.4.22",

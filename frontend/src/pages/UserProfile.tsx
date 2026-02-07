@@ -16,10 +16,9 @@ import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Avatar } from "../components/ui/Avatar";
 import { Skeleton } from "../components/ui/Skeleton";
-import { mockApi } from "../services/mockApi";
-import { mockPosts } from "../mocks/data";
+import { agoraApi } from "../services/agoraApi";
 import { formatDate, categoryLabel } from "../utils/helpers";
-import type { User } from "../types";
+import type { Post, User } from "../types";
 
 function StatCallout({
   value,
@@ -75,19 +74,35 @@ function StatCallout({
 export default function UserProfile() {
   const { id } = useParams<{ id: string }>();
   const [user, setUser] = useState<User | null>(null);
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const userId = id || "u1";
-    mockApi.getUser(userId).then((data) => {
-      setUser(data || null);
-      setLoading(false);
-    });
-  }, [id]);
+    let cancelled = false;
 
-  const userPosts = user
-    ? mockPosts.filter((p) => p.authorId === user.id)
-    : [];
+    void Promise.all([agoraApi.getUser(userId), agoraApi.getUserPosts(userId)])
+      .then(([userData, posts]) => {
+        if (cancelled) return;
+        setUser(userData || null);
+        setUserPosts(posts);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Failed to load user profile", error);
+        setUser(null);
+        setUserPosts([]);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   if (loading) {
     return (

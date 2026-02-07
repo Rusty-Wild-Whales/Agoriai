@@ -1,15 +1,26 @@
 # backend
 
-To install dependencies:
+## Setup
 
 ```bash
-bun install
+pnpm --dir backend install
+cp backend/.env_example backend/.env
 ```
 
-To run:
+Set `DATABASE_URL` in `backend/.env`.
+
+## Database
 
 ```bash
-bun run index.ts
+pnpm --dir backend db:push
 ```
 
-This project was created using `bun init` in bun v1.3.8. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+`db:push` applies the Drizzle schema. The API seeds starter data automatically on first run.
+
+## Run
+
+```bash
+pnpm --dir backend dev
+```
+
+API base: `http://localhost:3001/api`

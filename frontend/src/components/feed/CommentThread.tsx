@@ -5,6 +5,7 @@ import { Button } from "../ui/Button";
 import type { Comment } from "../../types";
 import { formatDate } from "../../utils/helpers";
 import { useAuthStore, useIsAnonymous } from "../../stores/authStore";
+import { agoraApi } from "../../services/agoraApi";
 
 function CommentItem({ comment, onReply }: { comment: Comment; onReply?: (content: string) => void }) {
   const [showReplyInput, setShowReplyInput] = useState(false);
@@ -125,15 +126,15 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
   const { user, getDisplayName } = useAuthStore();
   const isAnonymous = useIsAnonymous();
   const [threadComments, setThreadComments] = useState<Comment[]>(comments);
-  const [addedComments, setAddedComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
   const nextCommentId = useRef(0);
 
   useEffect(() => {
     setThreadComments(comments);
   }, [comments]);
 
-  const createComment = (content: string): Comment => ({
+  const createLocalComment = (content: string): Comment => ({
     id: `cm-${postId}-${nextCommentId.current++}`,
     postId,
     authorId: user?.id || "u1",
@@ -144,16 +145,51 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
     createdAt: new Date().toISOString(),
   });
 
-  const handleSubmit = () => {
-    if (!newComment.trim()) return;
-    const comment = createComment(newComment.trim());
-    setAddedComments((prev) => [...prev, comment]);
-    setNewComment("");
-    onCommentAdded?.();
+  const refreshComments = async () => {
+    const latest = await agoraApi.getComments(postId);
+    setThreadComments(latest);
   };
 
-  const handleReply = (parentId: string, content: string) => {
-    const reply = createComment(content.trim());
+  const handleSubmit = async () => {
+    if (!newComment.trim()) return;
+    setSubmittingComment(true);
+    try {
+      await agoraApi.createComment(postId, {
+        content: newComment.trim(),
+        authorId: user?.id,
+      });
+      await refreshComments();
+      setNewComment("");
+      onCommentAdded?.();
+    } catch (error) {
+      console.error("Failed to submit comment", error);
+      const fallback = createLocalComment(newComment.trim());
+      setThreadComments((prev) => [...prev, fallback]);
+      setNewComment("");
+      onCommentAdded?.();
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleReply = async (parentId: string, content: string) => {
+    setSubmittingComment(true);
+    try {
+      await agoraApi.createComment(postId, {
+        content: content.trim(),
+        parentCommentId: parentId,
+        authorId: user?.id,
+      });
+      await refreshComments();
+      onCommentAdded?.();
+      return;
+    } catch (error) {
+      console.error("Failed to submit reply", error);
+    } finally {
+      setSubmittingComment(false);
+    }
+
+    const reply = createLocalComment(content.trim());
     const appendReply = (items: Comment[]): Comment[] =>
       items.map((item) => {
         if (item.id === parentId) {
@@ -174,11 +210,8 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
       });
 
     setThreadComments((prev) => appendReply(prev));
-    setAddedComments((prev) => appendReply(prev));
     onCommentAdded?.();
   };
-
-  const displayComments = [...threadComments, ...addedComments];
 
   return (
     <div className="p-5 space-y-4">
@@ -194,12 +227,12 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
             </div>
           ))}
         </div>
-      ) : displayComments.length === 0 ? (
+      ) : threadComments.length === 0 ? (
         <p className="text-sm text-slate-400 text-center py-4">
           No comments yet. Be the first to respond.
         </p>
       ) : (
-        displayComments.map((comment) => (
+        threadComments.map((comment) => (
           <CommentItem
             key={comment.id}
             comment={comment}
@@ -216,11 +249,21 @@ export function CommentThread({ postId, comments = [], loading = false, onCommen
             type="text"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSubmit()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                void handleSubmit();
+              }
+            }}
             placeholder="Add a comment..."
             className="flex-1 px-3 py-2 rounded-xl border border-slate-300/80 dark:border-slate-600/70 bg-white/85 dark:bg-slate-900/60 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
           />
-          <Button size="sm" onClick={handleSubmit} disabled={!newComment.trim()}>
+          <Button
+            size="sm"
+            onClick={() => {
+              void handleSubmit();
+            }}
+            disabled={!newComment.trim() || submittingComment}
+          >
             Comment
           </Button>
         </div>
