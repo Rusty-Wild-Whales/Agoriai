@@ -5,14 +5,19 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = localStorage.getItem("auth_token");
+  const { headers: customHeaders, ...restOptions } = options;
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...restOptions,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
+      ...(customHeaders instanceof Headers
+        ? Object.fromEntries(customHeaders.entries())
+        : Array.isArray(customHeaders)
+          ? Object.fromEntries(customHeaders)
+          : customHeaders),
     },
-    ...options,
   });
 
   if (!response.ok) {

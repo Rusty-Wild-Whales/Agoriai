@@ -1,5 +1,6 @@
 {
   "name": "backend",
+  "description": "Agoriai REST API — Bun + Elysia + PostgreSQL with Drizzle ORM",
   "module": "index.ts",
   "type": "module",
   "scripts": {

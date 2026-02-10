@@ -73,8 +73,9 @@ export function PostCard({ post, highlighted = false }: PostCardProps) {
     try {
       const data = await agoraApi.getComments(post.id);
       setComments(data);
-      const total = data.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
-      setCommentCount(total);
+      const countAll = (items: Comment[]): number =>
+        items.reduce((acc, c) => acc + 1 + countAll(c.replies ?? []), 0);
+      setCommentCount(countAll(data));
     } catch (error) {
       console.error("Failed to load comments", error);
       setCommentsError(error instanceof Error ? error.message : "Failed to load comments.");
