@@ -1,10 +1,19 @@
 # Agoriai
 
-Agoriai is a student-first career network where users can share experiences, ask questions, and build meaningful professional connections while controlling how much of their identity is visible.
+Agoriai is a student-first anonymous career network where users can share experiences, ask questions, and build meaningful professional connections while controlling how much of their identity is visible.
 
-## Repository Description
+## Screenshots
 
-Anonymous career networking platform for students with identity controls, graph-based discovery, and moderated peer messaging.
+<table>
+  <tr>
+    <td><img src="docs/images/dashboard.png" alt="Dashboard" width="100%"/></td>
+    <td><img src="docs/images/nexus.png" alt="Nexus" width="100%"/></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/connection.png" alt="Connection" width="100%"/></td>
+    <td><img src="docs/images/feed.png" alt="Feed" width="100%"/></td>
+  </tr>
+</table>
 
 ## Key Features
 
